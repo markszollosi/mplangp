@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../value.h"
+#include "value.h"
 
 static char capture_buf[256];
 

@@ -3,9 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../ast.h"
-#include "../util.h"
-#include "../value.h"
+#include "ast.h"
+#include "util.h"
+#include "value.h"
 
 
 int main(void)

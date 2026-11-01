@@ -2,9 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../chunk.h"
-#include "../opcode.h"
-#include "../util.h"
+#include "chunk.h"
+#include "opcode.h"
+#include "util.h"
 
 #ifdef STUBS
 void *xmalloc(size_t n) { void *p = malloc(n); assert(p); return p; }

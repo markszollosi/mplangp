@@ -11,6 +11,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Adding a module: add it to `SRC` in the `Makefile` and, if it has a test, to `TESTS` plus a `T_<name>` source list.
 - Leak check on macOS: `leaks --atExit -- ./mplangp file.my`.
 
+## Layout
+
+`src/` holds all sources and headers (including `main.c`), `tests/` the module tests and `tests/samples/`, `build/` the object files (git-ignored). The `Makefile` lives at the root and `SRC` lists names relative to `src/`.
+
 ## Conventions
 
 Pure C99 built with `-std=c99 -Wall -Wextra -pedantic`, suckless/KISS style: tabs, function opening brace on its own line, snake_case, almost no comments, errors returned as bool/enum/NULL plus a `line N: message` on stderr. The language name is undecided; `mplangp` is the interpreter name, `.my` the source extension.

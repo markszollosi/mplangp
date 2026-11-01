@@ -2,31 +2,32 @@ CC = cc
 CFLAGS = -std=c99 -Wall -Wextra -pedantic -O2
 
 SRC = util.c value.c lexer.c ast.c parser.c chunk.c table.c compiler.c vm.c
-OBJ = $(SRC:.c=.o)
+OBJ = $(SRC:%.c=build/%.o)
 
 TESTS = value lexer ast parser chunk table compiler vm
 
 # sources each standalone test links against
-T_value    = util.c value.c
-T_lexer    = util.c lexer.c
-T_ast      = util.c value.c ast.c
-T_parser   = util.c value.c lexer.c ast.c parser.c
-T_chunk    = util.c value.c chunk.c
-T_table    = util.c value.c table.c
-T_compiler = util.c value.c lexer.c ast.c parser.c chunk.c table.c compiler.c
-T_vm       = util.c value.c chunk.c table.c vm.c
+T_value    = src/util.c src/value.c
+T_lexer    = src/util.c src/lexer.c
+T_ast      = src/util.c src/value.c src/ast.c
+T_parser   = src/util.c src/value.c src/lexer.c src/ast.c src/parser.c
+T_chunk    = src/util.c src/value.c src/chunk.c
+T_table    = src/util.c src/value.c src/table.c
+T_compiler = src/util.c src/value.c src/lexer.c src/ast.c src/parser.c src/chunk.c src/table.c src/compiler.c
+T_vm       = src/util.c src/value.c src/chunk.c src/table.c src/vm.c
 
 all: mplangp
 
-mplangp: main.o $(OBJ)
-	$(CC) $(CFLAGS) -o $@ main.o $(OBJ)
+mplangp: build/main.o $(OBJ)
+	$(CC) $(CFLAGS) -o $@ build/main.o $(OBJ)
 
-.c.o:
+build/%.o: src/%.c
+	@mkdir -p build
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 define TESTRULE
 tests/test_$(1): tests/test_$(1).c $$(T_$(1))
-	$$(CC) $$(CFLAGS) -I. -o $$@ tests/test_$(1).c $$(T_$(1))
+	$$(CC) $$(CFLAGS) -Isrc -o $$@ tests/test_$(1).c $$(T_$(1))
 endef
 $(foreach t,$(TESTS),$(eval $(call TESTRULE,$(t))))
 
@@ -43,6 +44,6 @@ test: mplangp
 	exit $$fail
 
 clean:
-	rm -f mplangp main.o $(OBJ) $(TESTS:%=tests/test_%)
+	rm -rf mplangp build $(TESTS:%=tests/test_%)
 
 .PHONY: all test clean

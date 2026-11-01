@@ -29,6 +29,12 @@ user-defined functions yet.
 	        print(i)
 	    i = i + 1
 
+## Layout
+
+	src/      interpreter sources and headers
+	tests/    module tests and sample programs
+	build/    object files (generated)
+
 ## Architecture
 
 Each module is one cogwheel with one job, connected through a small header:

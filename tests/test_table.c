@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../table.h"
-#include "../util.h"
+#include "table.h"
+#include "util.h"
 
 static uint32_t fnv(const char *s, int n)
 {
