@@ -9,6 +9,7 @@ typedef struct {
 	Lexer *lx;
 	Token cur;
 	bool failed;
+	bool in_def;
 } Parser;
 
 static Expr *parse_expr(Parser *p);
@@ -124,6 +125,54 @@ static Expr *parse_primary(Parser *p)
 	}
 }
 
+static Expr *parse_postfix(Parser *p)
+{
+	Expr *e = parse_primary(p);
+	while (e && (p->cur.type == TOK_LPAREN || p->cur.type == TOK_DOT)) {
+		int line = p->cur.line;
+		if (p->cur.type == TOK_DOT) {
+			advance(p);
+			Token name = p->cur;
+			if (!expect(p, TOK_NAME, "expected a name after '.'")) {
+				expr_free(e);
+				return NULL;
+			}
+			e = ast_new_attr(e, name.start, name.length, line);
+			continue;
+		}
+		advance(p);
+		Expr **args = NULL;
+		int n = 0, cap = 0;
+		bool ok = true;
+		if (p->cur.type != TOK_RPAREN) {
+			for (;;) {
+				Expr *a = parse_expr(p);
+				if (!a) {
+					ok = false;
+					break;
+				}
+				if (n == cap) {
+					cap = cap ? cap * 2 : 4;
+					args = xrealloc(args, (size_t)cap * sizeof *args);
+				}
+				args[n++] = a;
+				if (p->cur.type != TOK_COMMA)
+					break;
+				advance(p);
+			}
+		}
+		if (!ok || !expect(p, TOK_RPAREN, "expected ')'")) {
+			for (int i = 0; i < n; i++)
+				expr_free(args[i]);
+			free(args);
+			expr_free(e);
+			return NULL;
+		}
+		e = ast_new_call(e, args, n, line);
+	}
+	return e;
+}
+
 static Expr *parse_unary(Parser *p)
 {
 	if (p->cur.type == TOK_MINUS) {
@@ -132,7 +181,7 @@ static Expr *parse_unary(Parser *p)
 		Expr *r = parse_unary(p);
 		return r ? ast_new_unary(TOK_MINUS, r, line) : NULL;
 	}
-	return parse_primary(p);
+	return parse_postfix(p);
 }
 
 static Expr *parse_factor(Parser *p)
@@ -270,6 +319,54 @@ static Stmt *parse_if(Parser *p)
 	return ast_new_if_stmt(cond, then_branch, else_branch, line);
 }
 
+static Stmt *parse_def(Parser *p)
+{
+	int line = p->cur.line;
+	if (p->in_def) {
+		error_at(p, "nested def is not supported");
+		return NULL;
+	}
+	advance(p);
+	Token name = p->cur;
+	if (!expect(p, TOK_NAME, "expected a function name") ||
+	    !expect(p, TOK_LPAREN, "expected '(' after function name")) {
+		return NULL;
+	}
+	Expr **params = NULL;
+	int n = 0, cap = 0;
+	bool ok = true;
+	if (p->cur.type != TOK_RPAREN) {
+		for (;;) {
+			Token t = p->cur;
+			if (!expect(p, TOK_NAME, "expected a parameter name")) {
+				ok = false;
+				break;
+			}
+			if (n == cap) {
+				cap = cap ? cap * 2 : 4;
+				params = xrealloc(params, (size_t)cap * sizeof *params);
+			}
+			params[n++] = ast_new_name(t.start, t.length, t.line);
+			if (p->cur.type != TOK_COMMA)
+				break;
+			advance(p);
+		}
+	}
+	Stmt *body = NULL;
+	if (ok && expect(p, TOK_RPAREN, "expected ')'") && expect(p, TOK_COLON, "expected ':'")) {
+		p->in_def = true;
+		body = parse_block(p);
+		p->in_def = false;
+	}
+	if (!body) {
+		for (int i = 0; i < n; i++)
+			expr_free(params[i]);
+		free(params);
+		return NULL;
+	}
+	return ast_new_def_stmt(name.start, name.length, params, n, body, line);
+}
+
 static Stmt *parse_stmt(Parser *p)
 {
 	int line = p->cur.line;
@@ -278,6 +375,32 @@ static Stmt *parse_stmt(Parser *p)
 	switch (p->cur.type) {
 	case TOK_IF:
 		return parse_if(p);
+	case TOK_DEF:
+		return parse_def(p);
+	case TOK_RETURN:
+		if (!p->in_def) {
+			error_at(p, "'return' outside function");
+			return NULL;
+		}
+		advance(p);
+		e = NULL;
+		if (p->cur.type != TOK_NEWLINE && !(e = parse_expr(p))) {
+			return NULL;
+		}
+		if (!expect(p, TOK_NEWLINE, "expected newline")) {
+			expr_free(e);
+			return NULL;
+		}
+		return ast_new_return_stmt(e, line);
+	case TOK_IMPORT: {
+		advance(p);
+		Token name = p->cur;
+		if (!expect(p, TOK_NAME, "expected a module name") ||
+		    !expect(p, TOK_NEWLINE, "expected newline")) {
+			return NULL;
+		}
+		return ast_new_import_stmt(name.start, name.length, line);
+	}
 	case TOK_WHILE:
 		advance(p);
 		e = parse_expr(p);
@@ -324,7 +447,7 @@ static Stmt *parse_stmt(Parser *p)
 
 Program *parse(Lexer *lx)
 {
-	Parser p = { lx, { TOK_EOF, NULL, 0, 0 }, false };
+	Parser p = { lx, { TOK_EOF, NULL, 0, 0 }, false, false };
 	advance(&p);
 	Program *prog = xmalloc(sizeof *prog);
 	prog->body = NULL;

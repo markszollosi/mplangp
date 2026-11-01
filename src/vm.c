@@ -4,14 +4,25 @@
 #include <stdlib.h>
 #include <string.h>
 #include "vm.h"
+#include "function.h"
+#include "module.h"
 #include "opcode.h"
 #include "table.h"
 #include "util.h"
 
 #define STACK_MAX 256
+#define FRAMES_MAX 64
+
+typedef struct {
+	Function *fn;
+	uint8_t *ip;
+	int base; /* stack index of the callee; locals follow it */
+} Frame;
 
 static Value stack[STACK_MAX];
 static int sp;
+static Frame frames[FRAMES_MAX];
+static int nframes;
 static Table *globals;
 
 void vm_init(void)
@@ -34,6 +45,7 @@ void vm_free(void)
 		table_free(globals);
 		globals = NULL;
 	}
+	module_free_all();
 }
 
 static bool is_intlike(Value v)
@@ -54,11 +66,6 @@ static int64_t as_int(Value v)
 static double as_float(Value v)
 {
 	return v.type == VAL_FLOAT ? v.as.f : (double)as_int(v);
-}
-
-static Value copy(Value v)
-{
-	return v.type == VAL_STRING ? value_string(v.as.s, (int)strlen(v.as.s)) : v;
 }
 
 static bool repeat(Value s, int64_t n, Value *out)
@@ -190,11 +197,24 @@ static const char *arith(OpCode op, Value a, Value b, Value *out)
 	return NULL;
 }
 
-InterpretResult vm_run(Chunk *chunk)
+InterpretResult vm_run(Chunk *main_chunk)
 {
-	uint8_t *ip = chunk->code;
-	uint8_t *end = chunk->code + chunk->count;
+	Function script;
+	script.refs = 1;
+	script.name = NULL;
+	script.arity = 0;
+	script.nlocals = 0;
+	script.chunk = *main_chunk;
 	stack_reset();
+	nframes = 1;
+	Frame *f = &frames[0];
+	f->fn = &script;
+	f->ip = script.chunk.code;
+	f->base = 0;
+	Chunk *chunk;
+	uint8_t *ip, *end;
+#define LOAD() (chunk = &f->fn->chunk, ip = f->ip, end = chunk->code + chunk->count)
+	LOAD();
 
 	for (;;) {
 		uint8_t *at = ip;
@@ -219,7 +239,7 @@ InterpretResult vm_run(Chunk *chunk)
 				if (sp >= STACK_MAX) {
 					return error(chunk, at, "%s", "Stack overflow.");
 				}
-				stack[sp++] = copy(c);
+				stack[sp++] = value_copy(c);
 				break;
 			}
 			if (c.type != VAL_STRING) {
@@ -234,7 +254,7 @@ InterpretResult vm_run(Chunk *chunk)
 				if (sp >= STACK_MAX) {
 					return error(chunk, at, "%s", "Stack overflow.");
 				}
-				stack[sp++] = copy(v);
+				stack[sp++] = value_copy(v);
 			} else {
 				if (sp < 1) {
 					return error(chunk, at, "%s", "Stack underflow.");
@@ -333,6 +353,132 @@ InterpretResult vm_run(Chunk *chunk)
 				if (!value_is_truthy(stack[sp - 1])) {
 					ip += off;
 				}
+			}
+			break;
+		}
+		case OP_GET_LOCAL:
+		case OP_SET_LOCAL: {
+			if (ip >= end) {
+				return error(chunk, at, "%s", "Truncated instruction.");
+			}
+			int slot = *ip++;
+			if (slot < 1 || slot > f->fn->nlocals) {
+				return error(chunk, at, "%s", "Bad local slot.");
+			}
+			if (op == OP_GET_LOCAL) {
+				if (sp >= STACK_MAX) {
+					return error(chunk, at, "%s", "Stack overflow.");
+				}
+				stack[sp] = value_copy(stack[f->base + slot]);
+				sp++;
+			} else {
+				if (sp < 1) {
+					return error(chunk, at, "%s", "Stack underflow.");
+				}
+				value_free(stack[f->base + slot]);
+				stack[f->base + slot] = stack[--sp];
+			}
+			break;
+		}
+		case OP_CALL: {
+			if (ip >= end) {
+				return error(chunk, at, "%s", "Truncated instruction.");
+			}
+			int argc = *ip++;
+			if (sp < argc + 1) {
+				return error(chunk, at, "%s", "Stack underflow.");
+			}
+			Value callee = stack[sp - 1 - argc];
+			if (callee.type == VAL_NATIVE) {
+				Value ret = value_none();
+				if (!callee.as.native->fn(argc, &stack[sp - argc], &ret)) {
+					char msg[256] = "Native function failed.";
+					if (ret.type == VAL_STRING) {
+						strncpy(msg, ret.as.s, sizeof msg - 1);
+						msg[sizeof msg - 1] = '\0';
+					}
+					value_free(ret);
+					return error(chunk, at, "%s", msg);
+				}
+				while (argc-- > 0) {
+					value_free(stack[--sp]);
+				}
+				stack[sp - 1] = ret;
+				break;
+			}
+			if (callee.type != VAL_FUNC) {
+				return error(chunk, at, "%s", "Can only call functions.");
+			}
+			Function *fn = callee.as.fn;
+			if (argc != fn->arity) {
+				char msg[64];
+				snprintf(msg, sizeof msg, "Expected %d arguments but got %d.", fn->arity, argc);
+				return error(chunk, at, "%s", msg);
+			}
+			if (nframes >= FRAMES_MAX || sp + fn->nlocals - argc > STACK_MAX) {
+				return error(chunk, at, "%s", "Stack overflow.");
+			}
+			f->ip = ip;
+			Frame *nf = &frames[nframes++];
+			nf->fn = fn;
+			nf->ip = fn->chunk.code;
+			nf->base = sp - 1 - argc;
+			for (int i = argc; i < fn->nlocals; i++) {
+				stack[sp++] = value_none();
+			}
+			f = nf;
+			LOAD();
+			break;
+		}
+		case OP_RETURN: {
+			if (nframes < 2 || sp < 1) {
+				return error(chunk, at, "%s", "Return outside function.");
+			}
+			Value result = stack[--sp];
+			while (sp > f->base) {
+				value_free(stack[--sp]);
+			}
+			stack[sp++] = result;
+			nframes--;
+			f = &frames[nframes - 1];
+			LOAD();
+			break;
+		}
+		case OP_IMPORT:
+		case OP_GET_ATTR: {
+			if (ip >= end) {
+				return error(chunk, at, "%s", "Truncated instruction.");
+			}
+			int idx = *ip++;
+			if (idx >= chunk->constants.count || chunk->constants.values[idx].type != VAL_STRING) {
+				return error(chunk, at, "%s", "Bad constant index.");
+			}
+			const char *name = chunk->constants.values[idx].as.s;
+			char msg[256];
+			if (op == OP_IMPORT) {
+				Module *m = module_load(name, msg, sizeof msg);
+				if (!m) {
+					return error(chunk, at, "%s", msg);
+				}
+				if (sp >= STACK_MAX) {
+					return error(chunk, at, "%s", "Stack overflow.");
+				}
+				stack[sp].type = VAL_MODULE;
+				stack[sp++].as.module = m;
+			} else {
+				if (sp < 1) {
+					return error(chunk, at, "%s", "Stack underflow.");
+				}
+				if (stack[sp - 1].type != VAL_MODULE) {
+					return error(chunk, at, "%s", "Only modules have attributes.");
+				}
+				Value member;
+				if (!module_lookup(stack[sp - 1].as.module, name, &member)) {
+					snprintf(msg, sizeof msg, "Module '%s' has no attribute '%s'.",
+					    stack[sp - 1].as.module->name, name);
+					return error(chunk, at, "%s", msg);
+				}
+				stack[sp - 1] = member;
 			}
 			break;
 		}

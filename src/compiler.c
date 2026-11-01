@@ -2,8 +2,18 @@
 #include <string.h>
 #include "compiler.h"
 #include "opcode.h"
+#include "function.h"
 
 static bool stmts(Chunk *c, Stmt *s);
+
+#define LOCALS_MAX 255
+
+static struct {
+	const char *name[LOCALS_MAX];
+	int length[LOCALS_MAX];
+	int n;
+	bool infunc;
+} scope;
 
 static bool fail(int line, const char *msg)
 {
@@ -37,6 +47,60 @@ static bool constant(Chunk *c, Value v, int line, OpCode op)
 static bool name_op(Chunk *c, const char *name, int length, int line, OpCode op)
 {
 	return constant(c, value_string(name, length), line, op);
+}
+
+static int local_slot(const char *name, int length)
+{
+	if (!scope.infunc)
+		return -1;
+	for (int i = 0; i < scope.n; i++)
+		if (scope.length[i] == length && memcmp(scope.name[i], name, (size_t)length) == 0)
+			return i + 1;
+	return -1;
+}
+
+static bool add_local(const char *name, int length, int line)
+{
+	if (local_slot(name, length) >= 0)
+		return true;
+	if (scope.n >= LOCALS_MAX)
+		return fail(line, "too many local variables");
+	scope.name[scope.n] = name;
+	scope.length[scope.n++] = length;
+	return true;
+}
+
+static bool collect_locals(Stmt *s)
+{
+	for (; s; s = s->next) {
+		switch (s->type) {
+		case STMT_ASSIGN:
+			if (!add_local(s->as.assign.name, s->as.assign.length, s->line))
+				return false;
+			break;
+		case STMT_IF:
+			if (!collect_locals(s->as.if_stmt.then_branch) || !collect_locals(s->as.if_stmt.else_branch))
+				return false;
+			break;
+		case STMT_WHILE:
+			if (!collect_locals(s->as.while_stmt.body))
+				return false;
+			break;
+		default:
+			break;
+		}
+	}
+	return true;
+}
+
+static bool var_op(Chunk *c, const char *name, int length, int line, bool set)
+{
+	int slot = local_slot(name, length);
+	if (slot < 0)
+		return name_op(c, name, length, line, set ? OP_SET_GLOBAL : OP_GET_GLOBAL);
+	chunk_write(c, set ? OP_SET_LOCAL : OP_GET_LOCAL, line);
+	chunk_write(c, (uint8_t)slot, line);
+	return true;
 }
 
 static int emit_jump(Chunk *c, OpCode op, int line)
@@ -79,7 +143,7 @@ static bool expr(Chunk *c, Expr *e)
 		return constant(c, v, line, OP_CONST);
 	}
 	case EXPR_NAME:
-		return name_op(c, e->as.name.name, e->as.name.length, line, OP_GET_GLOBAL);
+		return var_op(c, e->as.name.name, e->as.name.length, line, false);
 	case EXPR_UNARY:
 		if (!expr(c, e->as.unary.right))
 			return false;
@@ -128,6 +192,21 @@ static bool expr(Chunk *c, Expr *e)
 			return false;
 		return patch_jump(c, end, line);
 	}
+	case EXPR_CALL:
+		if (e->as.call.nargs > 255)
+			return fail(line, "too many arguments");
+		if (!expr(c, e->as.call.callee))
+			return false;
+		for (int i = 0; i < e->as.call.nargs; i++)
+			if (!expr(c, e->as.call.args[i]))
+				return false;
+		chunk_write(c, OP_CALL, line);
+		chunk_write(c, (uint8_t)e->as.call.nargs, line);
+		return true;
+	case EXPR_ATTR:
+		if (!expr(c, e->as.attr.object))
+			return false;
+		return name_op(c, e->as.attr.name, e->as.attr.length, line, OP_GET_ATTR);
 	}
 	return fail(line, "bad expression");
 }
@@ -149,7 +228,7 @@ static bool stmt(Chunk *c, Stmt *s)
 	case STMT_ASSIGN:
 		if (!expr(c, s->as.assign.value))
 			return false;
-		return name_op(c, s->as.assign.name, s->as.assign.length, line, OP_SET_GLOBAL);
+		return var_op(c, s->as.assign.name, s->as.assign.length, line, true);
 	case STMT_IF: {
 		if (!expr(c, s->as.if_stmt.cond))
 			return false;
@@ -178,6 +257,51 @@ static bool stmt(Chunk *c, Stmt *s)
 		chunk_write(c, OP_POP, line);
 		return true;
 	}
+	case STMT_RETURN:
+		if (s->as.expr) {
+			if (!expr(c, s->as.expr))
+				return false;
+		} else if (!constant(c, value_none(), line, OP_CONST)) {
+			return false;
+		}
+		chunk_write(c, OP_RETURN, line);
+		return true;
+	case STMT_IMPORT:
+		return name_op(c, s->as.import.name, s->as.import.length, line, OP_IMPORT) &&
+		    name_op(c, s->as.import.name, s->as.import.length, line, OP_SET_GLOBAL);
+	case STMT_DEF: {
+		if (scope.infunc)
+			return fail(line, "nested def is not supported");
+		Function *f = function_new(s->as.def.name, s->as.def.length);
+		f->arity = s->as.def.nparams;
+		scope.n = 0;
+		scope.infunc = true;
+		bool ok = true;
+		for (int i = 0; ok && i < s->as.def.nparams; i++) {
+			Expr *p = s->as.def.params[i];
+			if (local_slot(p->as.name.name, p->as.name.length) >= 0)
+				ok = fail(p->line, "duplicate parameter");
+			else
+				ok = add_local(p->as.name.name, p->as.name.length, p->line);
+		}
+		ok = ok && collect_locals(s->as.def.body);
+		f->nlocals = scope.n;
+		ok = ok && stmts(&f->chunk, s->as.def.body) &&
+		    constant(&f->chunk, value_none(), line, OP_CONST);
+		if (ok)
+			chunk_write(&f->chunk, OP_RETURN, line);
+		scope.infunc = false;
+		scope.n = 0;
+		if (!ok) {
+			function_release(f);
+			return false;
+		}
+		Value fv;
+		fv.type = VAL_FUNC;
+		fv.as.fn = f;
+		return constant(c, fv, line, OP_CONST) &&
+		    name_op(c, s->as.def.name, s->as.def.length, line, OP_SET_GLOBAL);
+	}
 	}
 	return fail(line, "bad statement");
 }
@@ -192,6 +316,8 @@ static bool stmts(Chunk *c, Stmt *s)
 
 bool compile(Program *prog, Chunk *chunk)
 {
+	scope.infunc = false;
+	scope.n = 0;
 	if (!stmts(chunk, prog->body))
 		return false;
 	chunk_write(chunk, OP_HALT, chunk->count ? chunk->lines[chunk->count - 1] : 0);

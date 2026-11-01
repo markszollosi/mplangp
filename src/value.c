@@ -4,6 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "function.h"
+#include "module.h"
+#include "mplangpfunc.h"
 #include "util.h"
 
 Value value_none(void)
@@ -47,10 +50,21 @@ Value value_string(const char *chars, int length)
 	return v;
 }
 
+Value value_copy(Value v)
+{
+	if (v.type == VAL_STRING)
+		return value_string(v.as.s, (int)strlen(v.as.s));
+	if (v.type == VAL_FUNC)
+		v.as.fn->refs++;
+	return v;
+}
+
 void value_free(Value v)
 {
 	if (v.type == VAL_STRING)
 		free(v.as.s);
+	else if (v.type == VAL_FUNC)
+		function_release(v.as.fn);
 }
 
 bool value_is_truthy(Value v)
@@ -66,6 +80,10 @@ bool value_is_truthy(Value v)
 		return v.as.f != 0.0;
 	case VAL_STRING:
 		return v.as.s[0] != '\0';
+	case VAL_FUNC:
+	case VAL_NATIVE:
+	case VAL_MODULE:
+		return true;
 	}
 	return false;
 }
@@ -85,6 +103,12 @@ bool value_equals(Value a, Value b)
 		return a.as.f == b.as.f;
 	case VAL_STRING:
 		return strcmp(a.as.s, b.as.s) == 0;
+	case VAL_FUNC:
+		return a.as.fn == b.as.fn;
+	case VAL_NATIVE:
+		return a.as.native == b.as.native;
+	case VAL_MODULE:
+		return a.as.module == b.as.module;
 	}
 	return false;
 }
@@ -111,6 +135,15 @@ void value_print(Value v)
 	}
 	case VAL_STRING:
 		printf("%s", v.as.s);
+		break;
+	case VAL_FUNC:
+		printf("<function %s>", v.as.fn->name);
+		break;
+	case VAL_NATIVE:
+		printf("<native %s>", v.as.native->name);
+		break;
+	case VAL_MODULE:
+		printf("<module %s>", v.as.module->name);
 		break;
 	}
 }

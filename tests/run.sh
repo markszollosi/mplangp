@@ -1,6 +1,8 @@
 #!/bin/sh
 dir=$(dirname "$0")
 bin=${MPLANGP:-"$dir/../mplangp"}
+MPLANGP_MODULES="$dir/../modules"
+export MPLANGP_MODULES
 out=$(mktemp) || exit 1
 trap 'rm -f "$out"' EXIT
 fail=0

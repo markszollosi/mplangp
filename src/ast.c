@@ -61,6 +61,50 @@ Expr *ast_new_logical(TokenType op, Expr *left, Expr *right, int line)
 	return e;
 }
 
+Expr *ast_new_call(Expr *callee, Expr **args, int nargs, int line)
+{
+	Expr *e = new_expr(EXPR_CALL, line);
+	e->as.call.callee = callee;
+	e->as.call.args = args;
+	e->as.call.nargs = nargs;
+	return e;
+}
+
+Expr *ast_new_attr(Expr *object, const char *name, int length, int line)
+{
+	Expr *e = new_expr(EXPR_ATTR, line);
+	e->as.attr.object = object;
+	e->as.attr.name = name;
+	e->as.attr.length = length;
+	return e;
+}
+
+Stmt *ast_new_def_stmt(const char *name, int length, Expr **params, int nparams, Stmt *body, int line)
+{
+	Stmt *s = new_stmt(STMT_DEF, line);
+	s->as.def.name = name;
+	s->as.def.length = length;
+	s->as.def.params = params;
+	s->as.def.nparams = nparams;
+	s->as.def.body = body;
+	return s;
+}
+
+Stmt *ast_new_return_stmt(Expr *e, int line)
+{
+	Stmt *s = new_stmt(STMT_RETURN, line);
+	s->as.expr = e;
+	return s;
+}
+
+Stmt *ast_new_import_stmt(const char *name, int length, int line)
+{
+	Stmt *s = new_stmt(STMT_IMPORT, line);
+	s->as.import.name = name;
+	s->as.import.length = length;
+	return s;
+}
+
 Stmt *ast_new_expr_stmt(Expr *e, int line)
 {
 	Stmt *s = new_stmt(STMT_EXPR, line);
@@ -101,7 +145,7 @@ Stmt *ast_new_while_stmt(Expr *cond, Stmt *body, int line)
 	return s;
 }
 
-static void expr_free(Expr *e)
+void expr_free(Expr *e)
 {
 	if (!e) {
 		return;
@@ -123,6 +167,15 @@ static void expr_free(Expr *e)
 		expr_free(e->as.logical.left);
 		expr_free(e->as.logical.right);
 		break;
+	case EXPR_CALL:
+		expr_free(e->as.call.callee);
+		for (int i = 0; i < e->as.call.nargs; i++)
+			expr_free(e->as.call.args[i]);
+		free(e->as.call.args);
+		break;
+	case EXPR_ATTR:
+		expr_free(e->as.attr.object);
+		break;
 	}
 	free(e);
 }
@@ -134,7 +187,16 @@ static void stmt_free(Stmt *s)
 		switch (s->type) {
 		case STMT_EXPR:
 		case STMT_PRINT:
+		case STMT_RETURN:
 			expr_free(s->as.expr);
+			break;
+		case STMT_IMPORT:
+			break;
+		case STMT_DEF:
+			for (int i = 0; i < s->as.def.nparams; i++)
+				expr_free(s->as.def.params[i]);
+			free(s->as.def.params);
+			stmt_free(s->as.def.body);
 			break;
 		case STMT_ASSIGN:
 			expr_free(s->as.assign.value);

@@ -1,25 +1,42 @@
 CC = cc
 CFLAGS = -std=c99 -Wall -Wextra -pedantic -O2
 
-SRC = util.c value.c lexer.c ast.c parser.c chunk.c table.c compiler.c vm.c
+# native modules: modules/<name>.c -> modules/<name>.so
+MODSRC = $(wildcard modules/*.c)
+MODOUT = $(MODSRC:.c=.so)
+ifeq ($(shell uname),Darwin)
+SHARED = -dynamiclib
+LDLIBS =
+else
+SHARED = -shared -fPIC
+LDLIBS = -ldl
+endif
+
+SRC = util.c value.c function.c module.c lexer.c ast.c parser.c chunk.c table.c compiler.c vm.c
 OBJ = $(SRC:%.c=build/%.o)
 
 TESTS = value lexer ast parser chunk table compiler vm
 
 # sources each standalone test links against
-T_value    = src/util.c src/value.c
+CORE = src/util.c src/value.c src/function.c src/module.c src/chunk.c
+T_value    = $(CORE)
 T_lexer    = src/util.c src/lexer.c
-T_ast      = src/util.c src/value.c src/ast.c
-T_parser   = src/util.c src/value.c src/lexer.c src/ast.c src/parser.c
-T_chunk    = src/util.c src/value.c src/chunk.c
-T_table    = src/util.c src/value.c src/table.c
-T_compiler = src/util.c src/value.c src/lexer.c src/ast.c src/parser.c src/chunk.c src/table.c src/compiler.c
-T_vm       = src/util.c src/value.c src/chunk.c src/table.c src/vm.c
+T_ast      = $(CORE) src/ast.c
+T_parser   = $(CORE) src/lexer.c src/ast.c src/parser.c
+T_chunk    = $(CORE)
+T_table    = $(CORE) src/table.c
+T_compiler = $(CORE) src/lexer.c src/ast.c src/parser.c src/table.c src/compiler.c
+T_vm       = $(CORE) src/table.c src/vm.c
 
-all: mplangp
+all: mplangp modules
 
 mplangp: build/main.o $(OBJ)
-	$(CC) $(CFLAGS) -o $@ build/main.o $(OBJ)
+	$(CC) $(CFLAGS) -o $@ build/main.o $(OBJ) $(LDLIBS)
+
+modules: $(MODOUT)
+
+modules/%.so: modules/%.c src/mplangpfunc.h src/value.h
+	$(CC) $(CFLAGS) $(SHARED) -Isrc -o $@ $<
 
 build/%.o: src/%.c
 	@mkdir -p build
@@ -27,11 +44,11 @@ build/%.o: src/%.c
 
 define TESTRULE
 tests/test_$(1): tests/test_$(1).c $$(T_$(1))
-	$$(CC) $$(CFLAGS) -Isrc -o $$@ tests/test_$(1).c $$(T_$(1))
+	$$(CC) $$(CFLAGS) -Isrc -o $$@ tests/test_$(1).c $$(T_$(1)) $$(LDLIBS) -lm
 endef
 $(foreach t,$(TESTS),$(eval $(call TESTRULE,$(t))))
 
-test: mplangp
+test: mplangp modules
 	@fail=0; \
 	for t in $(TESTS); do \
 		if $(MAKE) -s tests/test_$$t && ./tests/test_$$t; then \
@@ -41,9 +58,10 @@ test: mplangp
 		fi; \
 	done; \
 	sh tests/run.sh || fail=1; \
+	sh tests/errors.sh || fail=1; \
 	exit $$fail
 
 clean:
-	rm -rf mplangp build $(TESTS:%=tests/test_%)
+	rm -rf mplangp build $(MODOUT) $(TESTS:%=tests/test_%)
 
-.PHONY: all test clean
+.PHONY: all modules test clean

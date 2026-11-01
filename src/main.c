@@ -5,7 +5,32 @@
 #include "ast.h"
 #include "chunk.h"
 #include "compiler.h"
+#include <string.h>
+#include "module.h"
 #include "vm.h"
+
+static void add_module_paths(const char *script)
+{
+	char dir[1024];
+	const char *slash = strrchr(script, '/');
+	if (slash && (size_t)(slash - script) < sizeof dir - 16) {
+		memcpy(dir, script, (size_t)(slash - script));
+		strcpy(dir + (slash - script), "/modules");
+		module_add_path(dir);
+	}
+	const char *env = getenv("MPLANGP_MODULES");
+	while (env && *env) {
+		const char *colon = strchr(env, ':');
+		size_t n = colon ? (size_t)(colon - env) : strlen(env);
+		if (n > 0 && n < sizeof dir) {
+			memcpy(dir, env, n);
+			dir[n] = '\0';
+			module_add_path(dir);
+		}
+		env = colon ? colon + 1 : NULL;
+	}
+	module_add_path("modules");
+}
 
 static char *read_file(const char *path)
 {
@@ -69,6 +94,7 @@ int main(int argc, char **argv)
 	}
 
 	vm_init();
+	add_module_paths(argv[1]);
 	InterpretResult r = vm_run(&chunk);
 	vm_free();
 	chunk_free(&chunk);

@@ -9,8 +9,15 @@ typedef enum {
 	VAL_BOOL,
 	VAL_INT,
 	VAL_FLOAT,
-	VAL_STRING
+	VAL_STRING,
+	VAL_FUNC,
+	VAL_NATIVE,
+	VAL_MODULE
 } ValueType;
+
+struct Function;
+struct MpEntry;
+struct Module;
 
 typedef struct {
 	ValueType type;
@@ -19,6 +26,9 @@ typedef struct {
 		int64_t i;
 		double f;
 		char *s;
+		struct Function *fn;        /* refcounted */
+		const struct MpEntry *native; /* borrowed, owned by its module */
+		struct Module *module;      /* borrowed, owned by the module registry */
 	} as;
 } Value;
 
@@ -27,6 +37,7 @@ Value value_bool(bool b);
 Value value_int(int64_t i);
 Value value_float(double f);
 Value value_string(const char *chars, int length);
+Value value_copy(Value v);
 void value_free(Value v);
 bool value_is_truthy(Value v);
 bool value_equals(Value a, Value b);

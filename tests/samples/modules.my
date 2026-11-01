@@ -1,0 +1,13 @@
+import math
+import str
+
+def hyp(a, b):
+    return math.sqrt(a * a + b * b)
+
+print(hyp(3, 4))
+print(math.pow(2, 10))
+print(math.floor(7.9))
+print(math.abs(-3))
+print(str.upper("native") + "!")
+print(str.len("mplangp"))
+print(math.sqrt(2) > 1.41 and math.sqrt(2) < 1.42)
