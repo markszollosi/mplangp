@@ -8,6 +8,7 @@
 #include "module.h"
 #include "opcode.h"
 #include "table.h"
+#include "builtin.h"
 #include "util.h"
 
 #define STACK_MAX 256
@@ -29,6 +30,7 @@ void vm_init(void)
 {
 	sp = 0;
 	globals = table_new();
+	builtin_install(globals);
 }
 
 static void stack_reset(void)
@@ -137,6 +139,15 @@ static InterpretResult error(Chunk *chunk, uint8_t *at, const char *fmt, const c
 
 static const char *arith(OpCode op, Value a, Value b, Value *out)
 {
+	if (op == OP_ADD && a.type == VAL_LIST && b.type == VAL_LIST) {
+		Value r = mp_list();
+		for (int i = 0; i < a.as.list->count; i++)
+			mp_push(r, value_copy(a.as.list->items[i]));
+		for (int i = 0; i < b.as.list->count; i++)
+			mp_push(r, value_copy(b.as.list->items[i]));
+		*out = r;
+		return NULL;
+	}
 	if (op == OP_ADD && a.type == VAL_STRING && b.type == VAL_STRING) {
 		return concat(a, b, out) ? NULL : "String too long.";
 	}
@@ -194,6 +205,76 @@ static const char *arith(OpCode op, Value a, Value b, Value *out)
 		break;
 	}
 	*out = value_float(r);
+	return NULL;
+}
+
+static char errbuf[320];
+
+static const char *index_get(Value obj, Value idx, Value *out)
+{
+	if (obj.type == VAL_MAP) {
+		if (idx.type != VAL_STRING)
+			return "Map keys must be strings.";
+		Value *v = mp_get(obj, idx.as.s);
+		if (!v) {
+			snprintf(errbuf, sizeof errbuf, "Key '%.200s' not found.", idx.as.s);
+			return errbuf;
+		}
+		*out = value_copy(*v);
+		return NULL;
+	}
+	if (obj.type != VAL_LIST && obj.type != VAL_STRING)
+		return "Only lists, maps and strings can be indexed.";
+	if (!is_intlike(idx))
+		return "Index must be an integer.";
+	int64_t n = obj.type == VAL_LIST ? obj.as.list->count : (int64_t)strlen(obj.as.s);
+	int64_t i = as_int(idx);
+	if (i < 0)
+		i += n;
+	if (i < 0 || i >= n)
+		return "Index out of range.";
+	*out = obj.type == VAL_LIST ? value_copy(obj.as.list->items[i]) : value_string(obj.as.s + i, 1);
+	return NULL;
+}
+
+static const char *index_set(Value obj, Value idx, Value val)
+{
+	if (obj.type == VAL_MAP) {
+		if (idx.type != VAL_STRING)
+			return "Map keys must be strings.";
+		value_map_put(obj, idx.as.s, value_copy(val));
+		return NULL;
+	}
+	if (obj.type != VAL_LIST)
+		return "Only lists and maps support assignment.";
+	if (!is_intlike(idx))
+		return "Index must be an integer.";
+	int64_t i = as_int(idx);
+	if (i < 0)
+		i += obj.as.list->count;
+	if (i < 0 || i >= obj.as.list->count)
+		return "Index out of range.";
+	value_free(obj.as.list->items[i]);
+	obj.as.list->items[i] = value_copy(val);
+	return NULL;
+}
+
+static const char *contains(Value needle, Value hay, bool *out)
+{
+	*out = false;
+	if (hay.type == VAL_LIST) {
+		for (int i = 0; i < hay.as.list->count && !*out; i++)
+			*out = values_equal(needle, hay.as.list->items[i]);
+		return NULL;
+	}
+	if (needle.type != VAL_STRING)
+		return hay.type == VAL_MAP ? "Map keys must be strings." : "'in <string>' needs a string.";
+	if (hay.type == VAL_MAP)
+		*out = mp_find(hay, needle.as.s) >= 0;
+	else if (hay.type == VAL_STRING)
+		*out = strstr(hay.as.s, needle.as.s) != NULL;
+	else
+		return "Argument of 'in' is not iterable.";
 	return NULL;
 }
 
@@ -321,6 +402,111 @@ InterpretResult vm_run(Chunk *main_chunk)
 			value_free(b);
 			sp--;
 			stack[sp - 1] = value_bool(r);
+			break;
+		}
+		case OP_IN: {
+			if (sp < 2) {
+				return error(chunk, at, "%s", "Stack underflow.");
+			}
+			bool r;
+			const char *msg = contains(stack[sp - 2], stack[sp - 1], &r);
+			if (msg) {
+				return error(chunk, at, "%s", msg);
+			}
+			value_free(stack[--sp]);
+			value_free(stack[sp - 1]);
+			stack[sp - 1] = value_bool(r);
+			break;
+		}
+		case OP_LIST:
+		case OP_MAP: {
+			if (ip >= end) {
+				return error(chunk, at, "%s", "Truncated instruction.");
+			}
+			int n = *ip++, take = op == OP_MAP ? n * 2 : n;
+			if (sp < take) {
+				return error(chunk, at, "%s", "Stack underflow.");
+			}
+			Value *base = &stack[sp - take];
+			if (op == OP_MAP) {
+				for (int i = 0; i < n; i++) {
+					if (base[i * 2].type != VAL_STRING) {
+						return error(chunk, at, "%s", "Map keys must be strings.");
+					}
+				}
+			}
+			Value r = op == OP_MAP ? mp_map() : mp_list();
+			for (int i = 0; i < n; i++) {
+				if (op == OP_LIST) {
+					mp_push(r, base[i]);
+					continue;
+				}
+				value_map_put(r, base[i * 2].as.s, base[i * 2 + 1]);
+				value_free(base[i * 2]);
+			}
+			sp -= take;
+			stack[sp++] = r;
+			break;
+		}
+		case OP_INDEX: {
+			if (sp < 2) {
+				return error(chunk, at, "%s", "Stack underflow.");
+			}
+			Value r;
+			const char *msg = index_get(stack[sp - 2], stack[sp - 1], &r);
+			if (msg) {
+				return error(chunk, at, "%s", msg);
+			}
+			value_free(stack[--sp]);
+			value_free(stack[sp - 1]);
+			stack[sp - 1] = r;
+			break;
+		}
+		case OP_SET_INDEX: {
+			if (sp < 3) {
+				return error(chunk, at, "%s", "Stack underflow.");
+			}
+			const char *msg = index_set(stack[sp - 3], stack[sp - 2], stack[sp - 1]);
+			if (msg) {
+				return error(chunk, at, "%s", msg);
+			}
+			value_free(stack[--sp]);
+			value_free(stack[--sp]);
+			value_free(stack[--sp]);
+			break;
+		}
+		case OP_ITER_HAS:
+		case OP_ITER_GET: {
+			if (sp < 2) {
+				return error(chunk, at, "%s", "Stack underflow.");
+			}
+			Value it = stack[sp - 2];
+			int64_t i = as_int(stack[sp - 1]);
+			int64_t n;
+			if (it.type == VAL_LIST) {
+				n = it.as.list->count;
+			} else if (it.type == VAL_MAP) {
+				n = it.as.map->count;
+			} else if (it.type == VAL_STRING) {
+				n = (int64_t)strlen(it.as.s);
+			} else {
+				return error(chunk, at, "%s", "Can only loop over lists, maps and strings.");
+			}
+			Value r;
+			if (op == OP_ITER_HAS) {
+				r = value_bool(i < n);
+			} else if (i >= n) {
+				return error(chunk, at, "%s", "Iterator out of range.");
+			} else if (it.type == VAL_LIST) {
+				r = value_copy(it.as.list->items[i]);
+			} else if (it.type == VAL_MAP) {
+				r = value_string(it.as.map->keys[i], (int)strlen(it.as.map->keys[i]));
+			} else {
+				r = value_string(it.as.s + i, 1);
+			}
+			value_free(stack[--sp]);
+			value_free(stack[sp - 1]);
+			stack[sp - 1] = r;
 			break;
 		}
 		case OP_PRINT:

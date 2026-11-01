@@ -1,0 +1,72 @@
+import json
+import enc
+import hash
+import rand
+import re
+import csv
+import url
+import str
+
+doc = json.parse("{\"a\": [1, 2.5, true, null, \"x\\ny\\u00e9\\ud83d\\ude00\"], \"b\": {\"c\": -3e2}, \"e\": []}")
+print(doc)
+print(json.dump(doc))
+print(json.dump(doc, 2))
+print(json.dump([1.0, 0.1, 1000000.5, "q\"\\\t"]))
+print(json.parse("  [1,2 ] ")[1])
+
+print(enc.b64("Man"))
+print(enc.b64("Ma"))
+print(enc.b64("M"))
+print(enc.unb64("TWFuIGlzIGRpc3Rpbmd1aXNoZWQ="))
+print(enc.hex("abc"))
+print(enc.unhex("616263"))
+print(enc.url("a b&c=d/\xc3\xa9"))
+print(enc.unurl("a%20b%26c+d"))
+
+print(hash.sha256(""))
+print(hash.sha256("abc"))
+print(hash.hmac("key", "The quick brown fox jumps over the lazy dog"))
+print(hash.crc32("123456789"))
+
+rand.seed(42)
+a = [rand.int(1, 100), rand.int(1, 100), rand.float()]
+rand.seed(42)
+b = [rand.int(1, 100), rand.int(1, 100), rand.float()]
+print(a == b)
+print(len(rand.uuid()))
+print(len(rand.hex(8)))
+xs = range(10)
+rand.shuffle(xs)
+sort(xs)
+print(xs)
+print(rand.choice([7]))
+
+print(re.test("^a+b", "aaab"))
+print(re.find("([a-z]+)@([a-z]+)\\.com", "mail bob@site.com now"))
+print(re.find("x", "abc"))
+print(re.findall("[0-9]+", "a1 b22 c333"))
+print(re.sub("([a-z]+)=([0-9]+)", "\\2:\\1", "a=1, bc=22"))
+print(re.split("[ ,]+", "a, b  c,d"))
+print(re.sub("x*", "-", "abc"))
+
+rows = csv.parse("a,b,c\n1,\"x,y\",\"he said \"\"hi\"\"\"\r\n2,,\n")
+print(rows)
+print(csv.dump(rows))
+print(csv.parse("a;b\n", ";"))
+
+print(url.parse("https://user:pw@example.com:8080/a/b?x=1&y=a%20b&z#frag"))
+print(url.parse("/just/a/path?q=1"))
+print(url.query({"a": "b c", "n": 3, "t": True}))
+
+print(str.split("a,b,,c", ","))
+print(str.split("abc", ""))
+print(str.join([1, "a", 2.5, True, None], "-"))
+print(str.join([], ","))
+print(str.replace("aXbXc", "X", "--"))
+print(str.trim("  hi \n"))
+print(str.lower("AbC"))
+print(str.find("hello", "ll"))
+print(str.find("hello", "zz"))
+print(str.starts("hello", "he"))
+print(str.ends("hello", "lo"))
+print(str.lines("a\nb\r\nc"))

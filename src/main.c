@@ -7,6 +7,7 @@
 #include "compiler.h"
 #include <string.h>
 #include "module.h"
+#include "builtin.h"
 #include "vm.h"
 
 static void add_module_paths(const char *script)
@@ -67,10 +68,11 @@ static char *read_file(const char *path)
 
 int main(int argc, char **argv)
 {
-	if (argc != 2) {
-		fprintf(stderr, "usage: mplangp <file>\n");
+	if (argc < 2) {
+		fprintf(stderr, "usage: mplangp <file> [args...]\n");
 		return 1;
 	}
+	builtin_set_args(argc - 2, argv + 2);
 	char *source = read_file(argv[1]);
 	if (!source)
 		return 1;

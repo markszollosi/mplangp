@@ -44,8 +44,8 @@ yields a native function that is called like any other. There is no
   function and expected arguments, like `sqrt(x) takes one number.`
 - `*ret` starts as `None`. A function with nothing to return can just
   `return true`.
-- Return only `None`, bool, int, float or string. Never return a function,
-  native or module value.
+- Return only `None`, bool, int, float, string, list or map (lists and maps
+  holding those). Never return a function, native or module value.
 - Strings you return must come from `mp_string` (it copies and mallocs; the
   interpreter frees it). Never return a pointer into `argv` or a static buffer.
 
@@ -59,6 +59,22 @@ yields a native function that is called like any other. There is no
 | `mp_is_num(v)` | int, bool or float |
 | `mp_to_int(v)`, `mp_to_float(v)` | read an int-like / numeric argument |
 | `mp_error(ret, msg)` | set an error message, evaluates to `false` |
+| `mp_errorf(ret, fmt, ...)` | same with printf formatting (240 chars max) |
+| `MP_CHECK(cond, msg)` | `if (!(cond)) return mp_error(ret, msg);` |
+| `mp_str(chars)` | owned string from a C string |
+| `mp_string_clean(chars, len)` | owned string with NUL bytes dropped, for external data |
+| `mp_is_str(v)` | string check |
+| `mp_alloc(n)` | `malloc` that aborts on failure |
+| `mp_list()`, `mp_push(list, item)` | build a list; `item` is owned by the list |
+| `mp_map()`, `mp_set(map, key, val)` | build a map; `val` is owned, `key` is copied |
+| `mp_get(map, key)`, `mp_find(map, key)` | look up a value (`NULL` / `-1` if absent) |
+| `mp_value_release(v)` | free a value the module built itself and will not return |
+
+Lists and maps are refcounted and read through their fields: `v.as.list->count`
+and `->items[i]`, `v.as.map->count`, `->keys[i]`, `->vals[i]`. Arguments are
+borrowed like everything else, so mutating an argument list in place (as `rand.shuffle` does)
+is fine, but never store it. `modules/json.c` and `modules/db.c` are the best examples of
+building nested results.
 
 Type checks for strings: `argv[i].type == VAL_STRING`, then read
 `argv[i].as.s` (NUL terminated). Other types are `VAL_NONE`, `VAL_BOOL`,
@@ -88,10 +104,12 @@ is an error, not `nan` or a crash.
 
 1. `make modules` builds every `modules/*.c`. `make` and `make test` do too.
    Built `.so` files are git-ignored; commit only the `.c`.
-2. Add a sample `tests/samples/<module>.my` that imports the module and prints
+2. Add a sample `tests/samples/<module>.my` (or extend `system.my`, `data.my`, `net_db.my`) that imports the module and prints
    results, then generate `tests/samples/<module>.expected` from the
    interpreter **after checking each line by hand or against Python**. Do not
    paste unverified output into an `.expected` file.
+2b. A module that needs a library adds `LIB_<module> = -lfoo` to the `Makefile`
+   (see `LIB_http`, `LIB_db`).
 3. Add a `check 70 "message" 'program\n'` line to `tests/errors.sh` for each
    error your module can raise.
 4. Run `make test`; it must exit 0. For a leak check on macOS:
@@ -111,9 +129,9 @@ is an error, not `nan` or a crash.
 - **State:** file-scope `static` variables live as long as the module is
   loaded (until the interpreter exits), so they work for caches or counters.
   Do not hold interpreter values in them.
-- **Not supported yet:** modules cannot call back into mplangp functions, take
-  or return lists/dicts (the language has none), or define constants; only
-  functions are exported. Do not work around this with globals or hacks;
+- **Not supported yet:** modules cannot call back into mplangp functions or
+  define constants; only functions are exported. Resources such as sockets and
+  databases are plain integers (a file descriptor or a slot number). Do not work around this with globals or hacks;
   extend `mplangpfunc.h` and the loader in `src/module.c` deliberately.
 - The loader uses `dlopen`, which is POSIX rather than C99. The Linux build
   flags in the `Makefile` are untested.

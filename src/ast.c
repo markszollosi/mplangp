@@ -79,6 +79,50 @@ Expr *ast_new_attr(Expr *object, const char *name, int length, int line)
 	return e;
 }
 
+Expr *ast_new_list(Expr **items, int n, int line)
+{
+	Expr *e = new_expr(EXPR_LIST, line);
+	e->as.list.items = items;
+	e->as.list.n = n;
+	return e;
+}
+
+Expr *ast_new_map(Expr **keys, Expr **vals, int n, int line)
+{
+	Expr *e = new_expr(EXPR_MAP, line);
+	e->as.map.keys = keys;
+	e->as.map.vals = vals;
+	e->as.map.n = n;
+	return e;
+}
+
+Expr *ast_new_index(Expr *object, Expr *index, int line)
+{
+	Expr *e = new_expr(EXPR_INDEX, line);
+	e->as.index.object = object;
+	e->as.index.index = index;
+	return e;
+}
+
+Stmt *ast_new_for_stmt(const char *name, int length, Expr *iter, Stmt *body, int line)
+{
+	Stmt *s = new_stmt(STMT_FOR, line);
+	s->as.for_stmt.name = name;
+	s->as.for_stmt.length = length;
+	s->as.for_stmt.iter = iter;
+	s->as.for_stmt.body = body;
+	return s;
+}
+
+Stmt *ast_new_setindex_stmt(Expr *object, Expr *index, Expr *value, int line)
+{
+	Stmt *s = new_stmt(STMT_SETINDEX, line);
+	s->as.setindex.object = object;
+	s->as.setindex.index = index;
+	s->as.setindex.value = value;
+	return s;
+}
+
 Stmt *ast_new_def_stmt(const char *name, int length, Expr **params, int nparams, Stmt *body, int line)
 {
 	Stmt *s = new_stmt(STMT_DEF, line);
@@ -186,6 +230,23 @@ void expr_free(Expr *e)
 	case EXPR_ATTR:
 		expr_free(e->as.attr.object);
 		break;
+	case EXPR_LIST:
+		for (int i = 0; i < e->as.list.n; i++)
+			expr_free(e->as.list.items[i]);
+		free(e->as.list.items);
+		break;
+	case EXPR_MAP:
+		for (int i = 0; i < e->as.map.n; i++) {
+			expr_free(e->as.map.keys[i]);
+			expr_free(e->as.map.vals[i]);
+		}
+		free(e->as.map.keys);
+		free(e->as.map.vals);
+		break;
+	case EXPR_INDEX:
+		expr_free(e->as.index.object);
+		expr_free(e->as.index.index);
+		break;
 	}
 	free(e);
 }
@@ -221,6 +282,15 @@ static void stmt_free(Stmt *s)
 		case STMT_WHILE:
 			expr_free(s->as.while_stmt.cond);
 			stmt_free(s->as.while_stmt.body);
+			break;
+		case STMT_FOR:
+			expr_free(s->as.for_stmt.iter);
+			stmt_free(s->as.for_stmt.body);
+			break;
+		case STMT_SETINDEX:
+			expr_free(s->as.setindex.object);
+			expr_free(s->as.setindex.index);
+			expr_free(s->as.setindex.value);
 			break;
 		}
 		free(s);

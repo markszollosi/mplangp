@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -54,6 +55,25 @@ static Expr *parse_string(Parser *p)
 			i++;
 			switch (s[i]) {
 			case 'n': buf[len++] = '\n'; break;
+			case 'r': buf[len++] = '\r'; break;
+			case 't': buf[len++] = '\t'; break;
+			case 'e': buf[len++] = '\033'; break;
+			case 'x':
+				if (i + 2 < n && isxdigit((unsigned char)s[i + 1]) && isxdigit((unsigned char)s[i + 2])) {
+					char hex[3] = { s[i + 1], s[i + 2], '\0' };
+					int v = (int)strtol(hex, NULL, 16);
+					if (v == 0) {
+						error_at(p, "\\x00 is not allowed in strings");
+						free(buf);
+						return NULL;
+					}
+					buf[len++] = (char)v;
+					i += 2;
+				} else {
+					buf[len++] = '\\';
+					buf[len++] = 'x';
+				}
+				break;
 			case '"': buf[len++] = '"'; break;
 			case '\\': buf[len++] = '\\'; break;
 			default:
@@ -112,6 +132,50 @@ static Expr *parse_primary(Parser *p)
 	case TOK_NAME:
 		advance(p);
 		return ast_new_name(t.start, t.length, t.line);
+	case TOK_LBRACKET:
+	case TOK_LBRACE: {
+		bool is_map = t.type == TOK_LBRACE;
+		TokenType close = is_map ? TOK_RBRACE : TOK_RBRACKET;
+		advance(p);
+		Expr **keys = NULL, **vals = NULL;
+		int n = 0, cap = 0;
+		bool ok = true;
+		while (p->cur.type != close) {
+			Expr *k = parse_expr(p), *v = NULL;
+			if (!k) {
+				ok = false;
+				break;
+			}
+			if (is_map && (!expect(p, TOK_COLON, "expected ':' in map") || !(v = parse_expr(p)))) {
+				expr_free(k);
+				ok = false;
+				break;
+			}
+			if (n == cap) {
+				cap = cap ? cap * 2 : 4;
+				keys = xrealloc(keys, (size_t)cap * sizeof *keys);
+				vals = xrealloc(vals, (size_t)cap * sizeof *vals);
+			}
+			keys[n] = k;
+			vals[n++] = v;
+			if (p->cur.type != TOK_COMMA)
+				break;
+			advance(p);
+		}
+		if (!ok || !expect(p, close, is_map ? "expected '}'" : "expected ']'")) {
+			for (int i = 0; i < n; i++) {
+				expr_free(keys[i]);
+				expr_free(vals[i]);
+			}
+			free(keys);
+			free(vals);
+			return NULL;
+		}
+		if (is_map)
+			return ast_new_map(keys, vals, n, t.line);
+		free(vals);
+		return ast_new_list(keys, n, t.line);
+	}
 	case TOK_LPAREN:
 		advance(p);
 		e = parse_expr(p);
@@ -128,8 +192,19 @@ static Expr *parse_primary(Parser *p)
 static Expr *parse_postfix(Parser *p)
 {
 	Expr *e = parse_primary(p);
-	while (e && (p->cur.type == TOK_LPAREN || p->cur.type == TOK_DOT)) {
+	while (e && (p->cur.type == TOK_LPAREN || p->cur.type == TOK_DOT || p->cur.type == TOK_LBRACKET)) {
 		int line = p->cur.line;
+		if (p->cur.type == TOK_LBRACKET) {
+			advance(p);
+			Expr *idx = parse_expr(p);
+			if (!idx || !expect(p, TOK_RBRACKET, "expected ']'")) {
+				expr_free(idx);
+				expr_free(e);
+				return NULL;
+			}
+			e = ast_new_index(e, idx, line);
+			continue;
+		}
 		if (p->cur.type == TOK_DOT) {
 			advance(p);
 			Token name = p->cur;
@@ -210,7 +285,7 @@ static Expr *parse_term(Parser *p)
 
 static bool is_comparison(TokenType t)
 {
-	return t == TOK_EQEQ || t == TOK_NE || t == TOK_LT || t == TOK_LE || t == TOK_GT || t == TOK_GE;
+	return t == TOK_IN || t == TOK_EQEQ || t == TOK_NE || t == TOK_LT || t == TOK_LE || t == TOK_GT || t == TOK_GE;
 }
 
 static Expr *parse_comparison(Parser *p)
@@ -418,6 +493,24 @@ static Stmt *parse_stmt(Parser *p)
 		}
 		body = parse_block(p);
 		return body ? ast_new_while_stmt(e, body, line) : NULL;
+	case TOK_FOR: {
+		advance(p);
+		Token name = p->cur;
+		if (!expect(p, TOK_NAME, "expected a loop variable") || !expect(p, TOK_IN, "expected 'in'")) {
+			return NULL;
+		}
+		e = parse_expr(p);
+		if (!e || !expect(p, TOK_COLON, "expected ':'")) {
+			expr_free(e);
+			return NULL;
+		}
+		body = parse_block(p);
+		if (!body) {
+			expr_free(e);
+			return NULL;
+		}
+		return ast_new_for_stmt(name.start, name.length, e, body, line);
+	}
 	case TOK_PRINT:
 		advance(p);
 		if (!expect(p, TOK_LPAREN, "expected '(' after print")) {
@@ -434,12 +527,23 @@ static Stmt *parse_stmt(Parser *p)
 			return NULL;
 		}
 		if (p->cur.type == TOK_EQ) {
-			if (e->type != EXPR_NAME) {
+			if (e->type != EXPR_NAME && e->type != EXPR_INDEX) {
 				error_at(p, "cannot assign to expression");
+				expr_free(e);
 				return NULL;
 			}
 			advance(p);
 			Expr *v = parse_expr(p);
+			if (e->type == EXPR_INDEX) {
+				if (!v || !expect(p, TOK_NEWLINE, "expected newline")) {
+					expr_free(v);
+					expr_free(e);
+					return NULL;
+				}
+				Stmt *si = ast_new_setindex_stmt(e->as.index.object, e->as.index.index, v, line);
+				free(e);
+				return si;
+			}
 			if (!v || !expect(p, TOK_NEWLINE, "expected newline")) {
 				return NULL;
 			}

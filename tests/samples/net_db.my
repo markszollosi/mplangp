@@ -1,0 +1,40 @@
+import net
+import db
+import sys
+import io
+
+srv = net.listen(0)
+port = net.port(srv)
+c = net.connect("127.0.0.1", port)
+s = net.accept(srv)
+net.send(c, "hello server\r\nsecond line\n")
+print(net.readline(s))
+print(net.readline(s))
+net.send(s, "pong")
+net.close(s)
+print(net.recv(c, 100))
+print(net.recv(c, 100) == "")
+print(net.peer(c))
+net.close(c)
+net.close(srv)
+print(net.open("127.0.0.1", port, 1))
+print(net.resolve("127.0.0.1"))
+
+h = db.open(":memory:")
+db.exec(h, "create table t (id integer primary key, name text, score real)")
+print(db.exec(h, "insert into t (name, score) values (?, ?)", ["ann", 1.5]))
+db.exec(h, "insert into t (name, score) values (?, ?)", ["bob", None])
+print(db.last_id(h))
+print(db.query(h, "select * from t order by id"))
+print(db.query(h, "select name from t where score > ?", [1]))
+db.close(h)
+
+print(sys.cpus() > 0)
+print(len(sys.load()))
+print(sys.uptime() > 0)
+print(sys.memory()["total"] > 0)
+print(sys.disk("/")["total"] > 0)
+print(len(sys.uname()["system"]) > 0)
+
+print(io.size()["cols"] > 0)
+print(io.color("red", "x") == "\e[31mx\e[0m")

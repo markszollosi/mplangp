@@ -22,6 +22,12 @@ Dynamic variables (`int`, `float`, `bool`, `str`, `None`), arithmetic
 `if` / `elif` / `else`, `while` with `break` and `continue`, and the builtin `print(expr)`.
 Blocks are introduced by `:` and indentation (spaces only, tabs are an error).
 
+Collections: lists `[1, 2]` and maps `{"k": v}` (string keys, insertion order) are shared by
+reference. `x[i]` indexes (negative counts from the end, strings index to one character),
+`x[i] = v` assigns, `a in b` tests membership, `for x in items:` loops over a list, the keys of a
+map or the bytes of a string, and `list + list` concatenates. Builtins: `len push pop keys values
+has get remove type text int float range sort slice args`. String escapes: `\n \r \t \e \xHH`.
+
 Functions: `def name(a, b):` with `return` (a bare `return`, or falling off the end, gives
 `None`). Parameters and any name assigned inside a function are local; other names read
 globals. Functions can recurse, but `def` cannot be nested and there are no default arguments.
@@ -56,6 +62,42 @@ Put it in `modules/`; `make modules` builds every `modules/*.c` to a `.so`. Argu
 borrowed, the result goes in `*ret`, and `return mp_error(ret, "msg")` raises a runtime error.
 `modules/math.c` and `modules/str.c` are working examples; `modules/README.md` is the full guide.
 
+## Modules that map the world
+
+Every module is one C file in `modules/` and is loaded on `import`. Together they bring the
+computer and the internet into the language:
+
+| module | maps | highlights |
+|---|---|---|
+| `fs` | the filesystem | `read write append exists isdir stat list glob mkdir remove rename copy cwd chdir` |
+| `path` | path strings | `join base dir ext stem norm abs home` |
+| `os` | the process environment | `env setenv environ platform arch hostname user pid exit` |
+| `proc` | other programs | `run(["ls", "-l"])`, `sh("cmd", stdin)` give `{code, out, err}`; `which` |
+| `time` | clocks and calendars | `now mono sleep format parse parts iso` |
+| `sys` | the machine | `cpus load uptime memory disk uname` |
+| `io` | the terminal | `input readall write eprint isatty size color` |
+| `net` | TCP sockets and DNS | `connect listen accept send recv readline timeout resolve open` |
+| `http` | the web (libcurl) | `get post request download`, returns `{status, ok, body, headers}` |
+| `url` | URLs | `parse` to parts and params, `query` to build a query string |
+| `json` | JSON | `parse`, `dump(value, indent)` |
+| `csv` | CSV | `parse`, `dump` |
+| `db` | SQLite | `open exec query last_id` with `?` parameters |
+| `re` | regular expressions | `test find findall sub split` |
+| `enc` | encodings | `b64 unb64 hex unhex url unurl` |
+| `hash` | digests | `sha256 file hmac crc32` |
+| `rand` | randomness | `int float choice shuffle uuid hex seed` |
+| `desktop` | the desktop | `clipboard copy notify open` |
+| `str`, `math` | text and numbers | `split join replace trim lines ...`, `sqrt pow floor abs` |
+
+	import http
+	import json
+	r = http.get("https://api.github.com/repos/torvalds/linux", {"Accept": "application/json"})
+	repo = json.parse(r["body"])
+	print(repo["stargazers_count"])
+
+Strings are NUL terminated, so binary data is not supported: bytes of value 0 coming from files,
+sockets or processes are dropped.
+
 ## Layout
 
 	src/      interpreter sources and headers (mplangpfunc.h is the module API)
@@ -80,6 +122,7 @@ Each module is one cogwheel with one job, connected through a small header:
 | `compiler` | AST to bytecode |
 | `table` | string-keyed hash table, used for globals |
 | `function` | compiled function object (refcounted) |
+| `builtin` | `len`, `push`, `keys`, `range`, ... bound as globals |
 | `module`, `mplangpfunc.h` | `dlopen` loader and the API native modules use |
 | `vm` | stack-based evaluator with call frames |
 | `main.c` | wires the pipeline together |

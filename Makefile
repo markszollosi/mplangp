@@ -9,10 +9,11 @@ SHARED = -dynamiclib
 LDLIBS =
 else
 SHARED = -shared -fPIC
+MODFLAGS = -D_GNU_SOURCE
 LDLIBS = -ldl -lm
 endif
 
-SRC = util.c value.c function.c module.c lexer.c ast.c parser.c chunk.c table.c compiler.c vm.c
+SRC = util.c value.c function.c builtin.c module.c lexer.c ast.c parser.c chunk.c table.c compiler.c vm.c
 OBJ = $(SRC:%.c=build/%.o)
 
 TESTS = value lexer ast parser chunk table compiler vm
@@ -26,7 +27,7 @@ T_parser   = $(CORE) src/lexer.c src/ast.c src/parser.c
 T_chunk    = $(CORE)
 T_table    = $(CORE) src/table.c
 T_compiler = $(CORE) src/lexer.c src/ast.c src/parser.c src/table.c src/compiler.c
-T_vm       = $(CORE) src/table.c src/vm.c
+T_vm       = $(CORE) src/table.c src/builtin.c src/vm.c
 
 all: mplangp modules
 
@@ -35,10 +36,14 @@ mplangp: build/main.o $(OBJ)
 
 modules: $(MODOUT)
 
-modules/%.so: modules/%.c src/mplangpfunc.h src/value.h
-	$(CC) $(CFLAGS) $(SHARED) -Isrc -o $@ $< -lm
+# extra libraries a module needs: LIB_<name>
+LIB_http = -lcurl
+LIB_db = -lsqlite3
 
-build/%.o: src/%.c
+modules/%.so: modules/%.c src/mplangpfunc.h src/value.h
+	$(CC) $(CFLAGS) $(MODFLAGS) $(SHARED) -Isrc -o $@ $< -lm $(LIB_$*)
+
+build/%.o: src/%.c $(wildcard src/*.h)
 	@mkdir -p build
 	$(CC) $(CFLAGS) -c -o $@ $<
 
