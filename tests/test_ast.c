@@ -5,49 +5,8 @@
 
 #include "../ast.h"
 #include "../util.h"
+#include "../value.h"
 
-void *xmalloc(size_t n)
-{
-	void *p = malloc(n);
-	assert(p);
-	return p;
-}
-
-void *xrealloc(void *p, size_t n)
-{
-	return realloc(p, n);
-}
-
-void die(const char *fmt, ...)
-{
-	(void)fmt;
-	exit(1);
-}
-
-Value value_string(const char *chars, int length)
-{
-	Value v;
-	v.type = VAL_STRING;
-	v.as.s = xmalloc(length + 1);
-	memcpy(v.as.s, chars, length);
-	v.as.s[length] = '\0';
-	return v;
-}
-
-Value value_int(int64_t i)
-{
-	Value v;
-	v.type = VAL_INT;
-	v.as.i = i;
-	return v;
-}
-
-void value_free(Value v)
-{
-	if (v.type == VAL_STRING) {
-		free(v.as.s);
-	}
-}
 
 int main(void)
 {
