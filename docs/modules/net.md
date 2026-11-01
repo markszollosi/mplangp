@@ -56,6 +56,53 @@ False
 ["127.0.0.1"]
 ```
 
+## One program as both client and server
+
+`net` has no threads or `select`, so a single program can only take turns: everything one side writes must fit in the kernel's socket buffer (tens of kilobytes, ample for short text) before the other side reads, otherwise `send` blocks forever. The reliable shape is: connect, accept, **client sends its whole script**, then the **server loops on `readline`** (it already has all the data) and replies, then the client reads the replies. `readline` returns `None` once the other side has closed and everything was read.
+
+```my
+import net
+
+server = net.listen(0)
+client = net.connect("127.0.0.1", net.port(server))
+conn = net.accept(server)
+
+for cmd in ["SET a 1", "GET a", "QUIT"]:
+    net.send(client, cmd + "\n")
+
+store = {}
+running = True
+while running:
+    line = net.readline(conn)
+    if line == None:
+        break
+    words = line
+    if line == "QUIT":
+        net.send(conn, "BYE\n")
+        running = False
+    elif line == "GET a":
+        net.send(conn, get(store, "a", "NOT FOUND") + "\n")
+    else:
+        store["a"] = "1"
+        net.send(conn, "OK\n")
+net.close(conn)
+
+for i in range(3):
+    print(net.readline(client))
+print(net.readline(client))
+net.close(client)
+net.close(server)
+```
+
+```output
+OK
+1
+BYE
+None
+```
+
+A timeout set with `net.timeout` ends the program with a `timed out` error when it expires (there is no way to catch it), so use it as a watchdog against hangs, not for retries; for retries use `net.open` first, or run the networking in a child process with `proc`. For two independent programs talking to each other, start the second with `proc.sh("mplangp other.my &")`.
+
 ## Patterns
 
 A small server that answers each client with a line:

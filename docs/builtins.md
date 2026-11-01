@@ -1,7 +1,7 @@
 # Builtin functions
 
-Available everywhere without `import`. They are ordinary globals, so a variable with the same
-name hides them (don't call a variable `len`, `keys`, `type`, `text`, `get`, `int`...).
+Available everywhere without `import`. They are ordinary globals, so a variable **or function parameter** with the same
+name hides them (don't call a variable or parameter `len`, `keys`, `type`, `text`, `get`, `int`...; inside `def f(text)` the builtin `text()` is gone).
 Wrong argument counts or types are runtime errors with a message naming the function.
 
 | function | returns | summary |
@@ -94,6 +94,7 @@ int float str none list map
 | `sum`, `min`, `max`, `abs`, `round` builtins | `math.min`, `math.max`, `math.abs`, `math.round` or a loop |
 | sorting by key or descending | `sort`, then loop backwards with `range`; or sort a list of keys |
 | string methods | `import str` (`str.split`, `str.join`, `str.replace`, `str.trim`, ...) |
+| number formatting (`%.2f`), padding | `str.fixed(x, 2)`, `str.pad_left`, `str.pad_right` |
 | `enumerate`, `zip` | `for i in range(len(xs)):` and index |
 | copy of a list/map | `slice(xs, 0, len(xs))`; for a map loop over `keys(m)` |
 

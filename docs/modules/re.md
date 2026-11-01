@@ -41,6 +41,22 @@ None
 too many spaces
 ```
 
+Bracket expressions can mix classes and literal characters, e.g. words with apostrophes:
+
+```my
+import re
+
+print(re.findall("[[:alpha:]']+", "don't stop, it's fine"))
+print(re.findall("\\(([^)]*)\\)", "a (b) and (c d)"))
+```
+
+```output
+["don't", "stop", "it's", "fine"]
+["(b)", "(c d)"]
+```
+
+(Inside string literals every backslash of the pattern is doubled again: `\\(` is the regex `\(`, a literal parenthesis.)
+
 Extracting fields:
 
 ```my

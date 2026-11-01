@@ -170,6 +170,54 @@ static bool s_ends(int argc, Value *argv, Value *ret)
 	return true;
 }
 
+static bool s_fixed(int argc, Value *argv, Value *ret)
+{
+	char buf[400];
+	MP_CHECK(argc == 2 && mp_is_num(argv[0]) && mp_is_int(argv[1]), "fixed(x, decimals) takes a number and an integer.");
+	int64_t d = mp_to_int(argv[1]);
+	MP_CHECK(d >= 0 && d <= 15, "fixed(x, decimals) takes decimals from 0 to 15.");
+	double x = mp_to_float(argv[0]);
+	MP_CHECK(x > -1e15 && x < 1e15, "fixed(x, decimals) takes a number below 1e15 in size.");
+	snprintf(buf, sizeof buf, "%.*f", (int)d, x);
+	*ret = mp_str(buf);
+	return true;
+}
+
+static bool pad(int argc, Value *argv, Value *ret, bool left, const char *name)
+{
+	if (argc < 2 || argc > 3 || !mp_is_str(argv[0]) || !mp_is_int(argv[1]) || (argc == 3 && (!mp_is_str(argv[2]) || strlen(argv[2].as.s) != 1)))
+		return mp_errorf(ret, "%s(s, width, fill) takes a string, an integer and an optional one-character string.", name);
+	int64_t width = mp_to_int(argv[1]);
+	MP_CHECK(width >= 0 && width <= 1000000, "pad width must be from 0 to 1000000.");
+	size_t n = strlen(argv[0].as.s), w = (size_t)width;
+	char fill = argc == 3 ? argv[2].as.s[0] : ' ';
+	size_t total = n > w ? n : w;
+	char *out = mp_alloc(total + 1);
+	size_t gap = total - n;
+	if (left) {
+		memset(out, fill, gap);
+		memcpy(out + gap, argv[0].as.s, n);
+	} else {
+		memcpy(out, argv[0].as.s, n);
+		memset(out + n, fill, gap);
+	}
+	out[total] = '\0';
+	*ret = mp_str(out);
+	free(out);
+	return true;
+}
+
+static bool s_pad_left(int argc, Value *argv, Value *ret)
+{
+	return pad(argc, argv, ret, true, "pad_left");
+}
+
+static bool s_pad_right(int argc, Value *argv, Value *ret)
+{
+	return pad(argc, argv, ret, false, "pad_right");
+}
+
 MP_MODULE({"len", s_len}, {"upper", s_upper}, {"lower", s_lower}, {"trim", s_trim},
 	{"split", s_split}, {"lines", s_lines}, {"join", s_join}, {"replace", s_replace},
-	{"find", s_find}, {"starts", s_starts}, {"ends", s_ends});
+	{"find", s_find}, {"starts", s_starts}, {"ends", s_ends},
+	{"fixed", s_fixed}, {"pad_left", s_pad_left}, {"pad_right", s_pad_right});
