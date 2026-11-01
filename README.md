@@ -54,7 +54,7 @@ A module is one C file that includes `mplangpfunc.h` and needs nothing from the 
 
 Put it in `modules/`; `make modules` builds every `modules/*.c` to a `.so`. Arguments are
 borrowed, the result goes in `*ret`, and `return mp_error(ret, "msg")` raises a runtime error.
-`modules/math.c` and `modules/str.c` are working examples.
+`modules/math.c` and `modules/str.c` are working examples; `modules/README.md` is the full guide.
 
 ## Layout
 

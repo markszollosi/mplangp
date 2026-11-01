@@ -9,7 +9,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - One module test: `make tests/test_vm && ./tests/test_vm` (replace `vm` with value, lexer, ast, parser, chunk, table or compiler).
 - Error cases (exit code + message) live in `tests/errors.sh`.
 - One sample: `./mplangp tests/samples/fizzbuzz.my`.
-- Adding a module: add it to `SRC` in the `Makefile` and, if it has a test, to `TESTS` plus a `T_<name>` source list.
+- Writing a native module: follow `modules/README.md` (required reading before touching `modules/` or `src/mplangpfunc.h`).
+- Adding a source file to the interpreter: add it to `SRC` in the `Makefile` and, if it has a test, to `TESTS` plus a `T_<name>` source list.
 - Leak check on macOS: `leaks --atExit -- ./mplangp file.my`.
 
 ## Layout

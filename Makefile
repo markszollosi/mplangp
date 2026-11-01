@@ -9,7 +9,7 @@ SHARED = -dynamiclib
 LDLIBS =
 else
 SHARED = -shared -fPIC
-LDLIBS = -ldl
+LDLIBS = -ldl -lm
 endif
 
 SRC = util.c value.c function.c module.c lexer.c ast.c parser.c chunk.c table.c compiler.c vm.c
@@ -36,7 +36,7 @@ mplangp: build/main.o $(OBJ)
 modules: $(MODOUT)
 
 modules/%.so: modules/%.c src/mplangpfunc.h src/value.h
-	$(CC) $(CFLAGS) $(SHARED) -Isrc -o $@ $<
+	$(CC) $(CFLAGS) $(SHARED) -Isrc -o $@ $< -lm
 
 build/%.o: src/%.c
 	@mkdir -p build
