@@ -19,7 +19,7 @@ Exit codes: 0 ok, 65 syntax or compile error, 70 runtime error, 1 usage or I/O.
 
 Dynamic variables (`int`, `float`, `bool`, `str`, `None`), arithmetic
 (`+ - * / %`, `/` always yields a float), comparisons, `and` / `or` / `not`,
-`if` / `elif` / `else`, `while`, and the builtin `print(expr)`.
+`if` / `elif` / `else`, `while` with `break` and `continue`, and the builtin `print(expr)`.
 Blocks are introduced by `:` and indentation (spaces only, tabs are an error).
 
 Functions: `def name(a, b):` with `return` (a bare `return`, or falling off the end, gives

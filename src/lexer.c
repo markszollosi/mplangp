@@ -24,6 +24,7 @@ static const struct {
 	{"while", TOK_WHILE}, {"print", TOK_PRINT},
 	{"and", TOK_AND}, {"or", TOK_OR}, {"not", TOK_NOT},
 	{"def", TOK_DEF}, {"return", TOK_RETURN}, {"import", TOK_IMPORT},
+	{"break", TOK_BREAK}, {"continue", TOK_CONTINUE},
 };
 
 Lexer *lexer_new(const char *source)

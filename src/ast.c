@@ -97,6 +97,16 @@ Stmt *ast_new_return_stmt(Expr *e, int line)
 	return s;
 }
 
+Stmt *ast_new_break_stmt(int line)
+{
+	return new_stmt(STMT_BREAK, line);
+}
+
+Stmt *ast_new_continue_stmt(int line)
+{
+	return new_stmt(STMT_CONTINUE, line);
+}
+
 Stmt *ast_new_import_stmt(const char *name, int length, int line)
 {
 	Stmt *s = new_stmt(STMT_IMPORT, line);
@@ -191,6 +201,8 @@ static void stmt_free(Stmt *s)
 			expr_free(s->as.expr);
 			break;
 		case STMT_IMPORT:
+		case STMT_BREAK:
+		case STMT_CONTINUE:
 			break;
 		case STMT_DEF:
 			for (int i = 0; i < s->as.def.nparams; i++)

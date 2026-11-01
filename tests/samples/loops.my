@@ -1,0 +1,52 @@
+# first prime above 50, skipping evens with continue
+n = 50
+while True:
+    n = n + 1
+    if n % 2 == 0:
+        continue
+    d = 3
+    prime = True
+    while d * d <= n:
+        if n % d == 0:
+            prime = False
+            break
+        d = d + 2
+    if prime:
+        break
+print(n)
+
+# nested loops: break only leaves the inner loop
+i = 0
+total = 0
+while i < 4:
+    j = 0
+    while True:
+        j = j + 1
+        if j > i:
+            break
+        total = total + j
+    i = i + 1
+print(total)
+
+# break and continue inside a function
+def first_multiple(k, limit):
+    x = 0
+    while x < limit:
+        x = x + 1
+        if x % k != 0:
+            continue
+        return x
+    return None
+
+print(first_multiple(7, 100))
+print(first_multiple(7, 5))
+
+# continue in the loop condition's neighbourhood
+s = 0
+c = 0
+while c < 10:
+    c = c + 1
+    if c % 3 == 0:
+        continue
+    s = s + c
+print(s)

@@ -392,6 +392,15 @@ static Stmt *parse_stmt(Parser *p)
 			return NULL;
 		}
 		return ast_new_return_stmt(e, line);
+	case TOK_BREAK:
+	case TOK_CONTINUE: {
+		TokenType kind = p->cur.type;
+		advance(p);
+		if (!expect(p, TOK_NEWLINE, "expected newline")) {
+			return NULL;
+		}
+		return kind == TOK_BREAK ? ast_new_break_stmt(line) : ast_new_continue_stmt(line);
+	}
 	case TOK_IMPORT: {
 		advance(p);
 		Token name = p->cur;

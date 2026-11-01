@@ -49,6 +49,18 @@ static bool name_op(Chunk *c, const char *name, int length, int line, OpCode op)
 	return constant(c, value_string(name, length), line, op);
 }
 
+#define LOOPS_MAX 32
+#define BREAKS_MAX 256
+
+static struct {
+	int start[LOOPS_MAX]; /* code offset of each open loop's condition */
+	int mark[LOOPS_MAX];  /* breaks[] length when the loop was entered */
+	int depth;
+	int floor;            /* loops below this belong to an enclosing function */
+	int breaks[BREAKS_MAX]; /* pending break jumps awaiting a target */
+	int nbreaks;
+} loops;
+
 static int local_slot(const char *name, int length)
 {
 	if (!scope.infunc)
@@ -246,6 +258,10 @@ static bool stmt(Chunk *c, Stmt *s)
 	}
 	case STMT_WHILE: {
 		int start = c->count;
+		if (loops.depth >= LOOPS_MAX)
+			return fail(line, "loops nested too deeply");
+		loops.start[loops.depth] = start;
+		loops.mark[loops.depth++] = loops.nbreaks;
 		if (!expr(c, s->as.while_stmt.cond))
 			return false;
 		int exit_j = emit_jump(c, OP_JUMP_IF_FALSE, line);
@@ -255,8 +271,23 @@ static bool stmt(Chunk *c, Stmt *s)
 		if (!patch_jump(c, exit_j, line))
 			return false;
 		chunk_write(c, OP_POP, line);
+		loops.depth--;
+		while (loops.nbreaks > loops.mark[loops.depth])
+			if (!patch_jump(c, loops.breaks[--loops.nbreaks], line))
+				return false;
 		return true;
 	}
+	case STMT_BREAK:
+		if (loops.depth <= loops.floor)
+			return fail(line, "'break' outside loop");
+		if (loops.nbreaks >= BREAKS_MAX)
+			return fail(line, "too many break statements");
+		loops.breaks[loops.nbreaks++] = emit_jump(c, OP_JUMP, line);
+		return true;
+	case STMT_CONTINUE:
+		if (loops.depth <= loops.floor)
+			return fail(line, "'continue' outside loop");
+		return emit_loop(c, loops.start[loops.depth - 1], line);
 	case STMT_RETURN:
 		if (s->as.expr) {
 			if (!expr(c, s->as.expr))
@@ -276,6 +307,8 @@ static bool stmt(Chunk *c, Stmt *s)
 		f->arity = s->as.def.nparams;
 		scope.n = 0;
 		scope.infunc = true;
+		int saved_floor = loops.floor;
+		loops.floor = loops.depth;
 		bool ok = true;
 		for (int i = 0; ok && i < s->as.def.nparams; i++) {
 			Expr *p = s->as.def.params[i];
@@ -292,6 +325,7 @@ static bool stmt(Chunk *c, Stmt *s)
 			chunk_write(&f->chunk, OP_RETURN, line);
 		scope.infunc = false;
 		scope.n = 0;
+		loops.floor = saved_floor;
 		if (!ok) {
 			function_release(f);
 			return false;
@@ -318,6 +352,7 @@ bool compile(Program *prog, Chunk *chunk)
 {
 	scope.infunc = false;
 	scope.n = 0;
+	loops.depth = loops.floor = loops.nbreaks = 0;
 	if (!stmts(chunk, prog->body))
 		return false;
 	chunk_write(chunk, OP_HALT, chunk->count ? chunk->lines[chunk->count - 1] : 0);

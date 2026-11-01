@@ -21,7 +21,7 @@ struct Expr {
 	} as;
 };
 
-typedef enum { STMT_EXPR, STMT_ASSIGN, STMT_IF, STMT_WHILE, STMT_PRINT, STMT_DEF, STMT_RETURN, STMT_IMPORT } StmtType;
+typedef enum { STMT_EXPR, STMT_ASSIGN, STMT_IF, STMT_WHILE, STMT_PRINT, STMT_DEF, STMT_RETURN, STMT_IMPORT, STMT_BREAK, STMT_CONTINUE } StmtType;
 
 typedef struct Stmt Stmt;
 struct Stmt {
@@ -49,6 +49,8 @@ Expr *ast_new_call(Expr *callee, Expr **args, int nargs, int line);
 Expr *ast_new_attr(Expr *object, const char *name, int length, int line);
 Stmt *ast_new_def_stmt(const char *name, int length, Expr **params, int nparams, Stmt *body, int line);
 Stmt *ast_new_return_stmt(Expr *e, int line);
+Stmt *ast_new_break_stmt(int line);
+Stmt *ast_new_continue_stmt(int line);
 Stmt *ast_new_import_stmt(const char *name, int length, int line);
 Stmt *ast_new_expr_stmt(Expr *e, int line);
 Stmt *ast_new_print_stmt(Expr *e, int line);

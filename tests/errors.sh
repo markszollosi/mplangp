@@ -28,4 +28,7 @@ check 70 "Stack overflow." 'def r(n):\n    return r(n + 1)\nr(0)\n'
 check 65 "nested def is not supported" 'def f():\n    def g():\n        return 1\n'
 check 65 "'return' outside function" 'return 1\n'
 check 65 "duplicate parameter" 'def f(a, a):\n    return a\n'
+check 65 "'break' outside loop" 'break\n'
+check 65 "'continue' outside loop" 'if True:\n    continue\n'
+check 65 "'break' outside loop" 'while True:\n    def f():\n        break\n    break\n'
 exit $fail
