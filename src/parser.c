@@ -266,7 +266,11 @@ static Expr *parse_factor(Parser *p)
 		Token op = p->cur;
 		advance(p);
 		Expr *r = parse_unary(p);
-		e = r ? ast_new_binary(op.type, e, r, op.line) : NULL;
+		if (!r) {
+			expr_free(e);
+			return NULL;
+		}
+		e = ast_new_binary(op.type, e, r, op.line);
 	}
 	return e;
 }
@@ -278,7 +282,11 @@ static Expr *parse_term(Parser *p)
 		Token op = p->cur;
 		advance(p);
 		Expr *r = parse_factor(p);
-		e = r ? ast_new_binary(op.type, e, r, op.line) : NULL;
+		if (!r) {
+			expr_free(e);
+			return NULL;
+		}
+		e = ast_new_binary(op.type, e, r, op.line);
 	}
 	return e;
 }
@@ -295,7 +303,11 @@ static Expr *parse_comparison(Parser *p)
 		Token op = p->cur;
 		advance(p);
 		Expr *r = parse_term(p);
-		e = r ? ast_new_binary(op.type, e, r, op.line) : NULL;
+		if (!r) {
+			expr_free(e);
+			return NULL;
+		}
+		e = ast_new_binary(op.type, e, r, op.line);
 	}
 	return e;
 }
@@ -318,7 +330,11 @@ static Expr *parse_and(Parser *p)
 		int line = p->cur.line;
 		advance(p);
 		Expr *r = parse_not(p);
-		e = r ? ast_new_logical(TOK_AND, e, r, line) : NULL;
+		if (!r) {
+			expr_free(e);
+			return NULL;
+		}
+		e = ast_new_logical(TOK_AND, e, r, line);
 	}
 	return e;
 }
@@ -330,7 +346,11 @@ static Expr *parse_expr(Parser *p)
 		int line = p->cur.line;
 		advance(p);
 		Expr *r = parse_and(p);
-		e = r ? ast_new_logical(TOK_OR, e, r, line) : NULL;
+		if (!r) {
+			expr_free(e);
+			return NULL;
+		}
+		e = ast_new_logical(TOK_OR, e, r, line);
 	}
 	return e;
 }
@@ -371,22 +391,26 @@ static Stmt *parse_if(Parser *p)
 	advance(p);
 	Expr *cond = parse_expr(p);
 	if (!cond || !expect(p, TOK_COLON, "expected ':'")) {
+		expr_free(cond);
 		return NULL;
 	}
 	Stmt *then_branch = parse_block(p);
 	if (!then_branch) {
+		expr_free(cond);
 		return NULL;
 	}
 	Stmt *else_branch = NULL;
 	if (p->cur.type == TOK_ELIF) {
 		else_branch = parse_if(p);
 		if (!else_branch) {
+			expr_free(cond);
 			free_stmts(then_branch);
 			return NULL;
 		}
 	} else if (p->cur.type == TOK_ELSE) {
 		advance(p);
 		if (!expect(p, TOK_COLON, "expected ':'") || !(else_branch = parse_block(p))) {
+			expr_free(cond);
 			free_stmts(then_branch);
 			return NULL;
 		}
@@ -489,10 +513,15 @@ static Stmt *parse_stmt(Parser *p)
 		advance(p);
 		e = parse_expr(p);
 		if (!e || !expect(p, TOK_COLON, "expected ':'")) {
+			expr_free(e);
 			return NULL;
 		}
 		body = parse_block(p);
-		return body ? ast_new_while_stmt(e, body, line) : NULL;
+		if (!body) {
+			expr_free(e);
+			return NULL;
+		}
+		return ast_new_while_stmt(e, body, line);
 	case TOK_FOR: {
 		advance(p);
 		Token name = p->cur;
@@ -518,6 +547,7 @@ static Stmt *parse_stmt(Parser *p)
 		}
 		e = parse_expr(p);
 		if (!e || !expect(p, TOK_RPAREN, "expected ')'") || !expect(p, TOK_NEWLINE, "expected newline")) {
+			expr_free(e);
 			return NULL;
 		}
 		return ast_new_print_stmt(e, line);
@@ -545,6 +575,8 @@ static Stmt *parse_stmt(Parser *p)
 				return si;
 			}
 			if (!v || !expect(p, TOK_NEWLINE, "expected newline")) {
+				expr_free(v);
+				expr_free(e);
 				return NULL;
 			}
 			Stmt *a = ast_new_assign_stmt(e->as.name.name, e->as.name.length, v, line);
@@ -552,6 +584,7 @@ static Stmt *parse_stmt(Parser *p)
 			return a;
 		}
 		if (!expect(p, TOK_NEWLINE, "expected newline")) {
+			expr_free(e);
 			return NULL;
 		}
 		return ast_new_expr_stmt(e, line);

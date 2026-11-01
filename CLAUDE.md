@@ -42,4 +42,4 @@ Contracts that span several files:
 
 Modules that need a system library (`http` -> libcurl, `db` -> sqlite3) get it through `LIB_<name>` in the Makefile; both ship with the macOS SDK. Resources (sockets, databases) are integer handles. Strings cannot hold NUL, so module code uses `mp_string_clean` for external data.
 
-Known gaps: reference cycles between lists/maps leak; map lookup is linear; `\x00` is rejected in string literals; some parser error paths still leak half-built expressions; string literals with embedded NULs are truncated in the compiler.
+Known gaps: reference cycles between lists/maps leak; map lookup is linear; `\x00` is rejected in string literals; string literals with embedded NULs are truncated in the compiler.
