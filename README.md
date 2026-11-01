@@ -53,3 +53,7 @@ Each module is one cogwheel with one job, connected through a small header:
 | `table` | string-keyed hash table, used for globals |
 | `vm` | stack-based bytecode evaluator |
 | `main.c` | wires the pipeline together |
+
+## License
+
+Copyright (c) 2026 Mark Szollosi. All rights reserved. See `LICENSE`.
