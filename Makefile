@@ -16,9 +16,9 @@ T_table    = util.c value.c table.c
 T_compiler = util.c value.c lexer.c ast.c parser.c chunk.c table.c compiler.c
 T_vm       = util.c value.c chunk.c table.c vm.c
 
-all: pyclone
+all: mplangp
 
-pyclone: main.o $(OBJ)
+mplangp: main.o $(OBJ)
 	$(CC) $(CFLAGS) -o $@ main.o $(OBJ)
 
 .c.o:
@@ -30,7 +30,7 @@ tests/test_$(1): tests/test_$(1).c $$(T_$(1))
 endef
 $(foreach t,$(TESTS),$(eval $(call TESTRULE,$(t))))
 
-test: pyclone
+test: mplangp
 	@fail=0; \
 	for t in $(TESTS); do \
 		if $(MAKE) -s tests/test_$$t && ./tests/test_$$t; then \
@@ -43,6 +43,6 @@ test: pyclone
 	exit $$fail
 
 clean:
-	rm -f pyclone main.o $(OBJ) $(TESTS:%=tests/test_%)
+	rm -f mplangp main.o $(OBJ) $(TESTS:%=tests/test_%)
 
 .PHONY: all test clean

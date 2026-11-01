@@ -11,7 +11,7 @@ static char *read_file(const char *path)
 {
 	FILE *f = fopen(path, "rb");
 	if (!f) {
-		fprintf(stderr, "pyclone: cannot open '%s'\n", path);
+		fprintf(stderr, "mplangp: cannot open '%s'\n", path);
 		return NULL;
 	}
 	size_t cap = 4096, len = 0;
@@ -32,7 +32,7 @@ static char *read_file(const char *path)
 	int bad = ferror(f);
 	fclose(f);
 	if (!buf || bad) {
-		fprintf(stderr, "pyclone: cannot read '%s'\n", path);
+		fprintf(stderr, "mplangp: cannot read '%s'\n", path);
 		free(buf);
 		return NULL;
 	}
@@ -43,7 +43,7 @@ static char *read_file(const char *path)
 int main(int argc, char **argv)
 {
 	if (argc != 2) {
-		fprintf(stderr, "usage: pyclone <file.py>\n");
+		fprintf(stderr, "usage: mplangp <file>\n");
 		return 1;
 	}
 	char *source = read_file(argv[1]);

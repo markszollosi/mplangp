@@ -1,6 +1,6 @@
 #!/bin/sh
 dir=$(dirname "$0")
-bin=${PYCLONE:-"$dir/../pyclone"}
+bin=${MPLANGP:-"$dir/../mplangp"}
 out=$(mktemp) || exit 1
 trap 'rm -f "$out"' EXIT
 fail=0
