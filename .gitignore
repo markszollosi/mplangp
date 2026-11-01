@@ -1,2 +1,5 @@
 *.o
 mplangp
+tests/test_*
+!tests/test_*.c
+.claude/
