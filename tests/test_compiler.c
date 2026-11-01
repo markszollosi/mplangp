@@ -54,8 +54,8 @@ int main(void)
 		Stmt *s = assign("x", ast_new_binary(TOK_PLUS, lit(1), ast_new_binary(TOK_STAR, lit(2), lit(3), 1), 1));
 		s->next = print(name("x"));
 		uint8_t w[] = { OP_CONST, 0, OP_CONST, 1, OP_CONST, 2, OP_MUL, OP_ADD,
-			OP_SET_GLOBAL, 3, OP_GET_GLOBAL, 4, OP_PRINT, OP_HALT };
-		check("assign+arith", s, w, sizeof w, 5);
+			OP_SET_GLOBAL, 3, OP_GET_GLOBAL, 3, OP_PRINT, OP_HALT };
+		check("assign+arith", s, w, sizeof w, 4);
 	}
 	{
 		Stmt *s = print(ast_new_unary(TOK_NOT, ast_new_unary(TOK_MINUS, lit(1), 1), 1));
@@ -87,9 +87,9 @@ int main(void)
 		Stmt *body = assign("i", ast_new_binary(TOK_PLUS, name("i"), lit(1), 1));
 		Stmt *s = ast_new_while_stmt(ast_new_binary(TOK_LT, name("i"), lit(3), 1), body, 1);
 		uint8_t w[] = { OP_GET_GLOBAL, 0, OP_CONST, 1, OP_LT, OP_JUMP_IF_FALSE, 0, 11, OP_POP,
-			OP_GET_GLOBAL, 2, OP_CONST, 3, OP_ADD, OP_SET_GLOBAL, 4,
+			OP_GET_GLOBAL, 0, OP_CONST, 2, OP_ADD, OP_SET_GLOBAL, 0,
 			OP_LOOP, 0, 19, OP_POP, OP_HALT };
-		check("while", s, w, sizeof w, 5);
+		check("while", s, w, sizeof w, 3);
 	}
 	{
 		Stmt *s = print(ast_new_logical(TOK_AND, name("a"), name("b"), 1));

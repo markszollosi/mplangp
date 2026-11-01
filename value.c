@@ -135,6 +135,8 @@ void value_array_write(ValueArray *a, Value v)
 
 void value_array_free(ValueArray *a)
 {
+	for (int i = 0; i < a->count; i++)
+		value_free(a->values[i]);
 	free(a->values);
 	value_array_init(a);
 }

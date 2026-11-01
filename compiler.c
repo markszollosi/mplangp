@@ -13,13 +13,22 @@ static bool fail(int line, const char *msg)
 
 static bool constant(Chunk *c, Value v, int line, OpCode op)
 {
-	if (c->constants.count >= 256) {
-		value_free(v);
-		return fail(line, "too many constants");
+	int idx = -1;
+	for (int i = 0; i < c->constants.count; i++) {
+		if (c->constants.values[i].type == v.type &&
+		    value_equals(c->constants.values[i], v)) {
+			idx = i;
+			value_free(v);
+			break;
+		}
 	}
-	int idx = chunk_add_constant(c, v);
-	if (idx > 255)
-		return fail(line, "too many constants");
+	if (idx < 0) {
+		if (c->constants.count >= 256) {
+			value_free(v);
+			return fail(line, "too many constants");
+		}
+		idx = chunk_add_constant(c, v);
+	}
 	chunk_write(c, op, line);
 	chunk_write(c, (uint8_t)idx, line);
 	return true;
