@@ -22,6 +22,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Pure C99 built with `-std=c99 -Wall -Wextra -pedantic`, suckless/KISS style: tabs, function opening brace on its own line, snake_case, almost no comments, errors returned as bool/enum/NULL plus a `line N: message` on stderr. The language name is undecided; `mplangp` is the interpreter name, `.my` the source extension.
 
+## Design goal and testing
+
+The language is AI-native: optimized for agentic work, and Claude must be able to program in it. Favor agent ergonomics (clear `line N: message` errors, predictable semantics, accurate docs). Every new feature or functionality change must be tested against fresh agents in sandboxes with no knowledge of the implementation: give them only the user-facing docs and the `mplangp` binary (not `src/`), have them write programs in the language, and treat their failures (unclear errors, doc gaps, surprising semantics) as bugs. Passing unit tests is not enough.
+
 ## Architecture
 
 Pipeline: `lexer -> parser -> AST -> compiler -> Chunk -> vm`, wired in `main.c`. Modules talk only through their headers.
