@@ -1,0 +1,62 @@
+{"a": [1, 2.5, True, None, "x\nyé😀"], "b": {"c": -300.0}, "e": []}
+{"a":[1,2.5,true,null,"x\nyé😀"],"b":{"c":-300.0},"e":[]}
+{
+  "a": [
+    1,
+    2.5,
+    true,
+    null,
+    "x\nyé😀"
+  ],
+  "b": {
+    "c": -300.0
+  },
+  "e": []
+}
+[1.0,0.1,1000000.5,"q\"\\\t"]
+2
+TWFu
+TWE=
+TQ==
+Man is distinguished
+616263
+abc
+a%20b%26c%3Dd%2F%C3%A9
+a b&c d
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8
+3421780262
+True
+36
+16
+[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+7
+True
+["bob@site.com", "bob", "site"]
+None
+["1", "22", "333"]
+1:a, 22:bc
+["a", "b", "c", "d"]
+-a-b-c-
+[["a", "b", "c"], ["1", "x,y", "he said \"hi\""], ["2", "", ""]]
+a,b,c
+1,"x,y","he said ""hi"""
+2,,
+
+[["a", "b"]]
+{"scheme": "https", "user": "user:pw", "host": "example.com", "port": 8080, "path": "/a/b", "query": "x=1&y=a%20b&z", "fragment": "frag", "params": {"x": "1", "y": "a b", "z": ""}}
+{"scheme": "", "user": "", "host": "", "port": None, "path": "/just/a/path", "query": "q=1", "fragment": "", "params": {"q": "1"}}
+a=b%20c&n=3&t=true
+["a", "b", "", "c"]
+["a", "b", "c"]
+1-a-2.5-True-None
+
+a--b--c
+hi
+abc
+2
+-1
+True
+True
+["a", "b", "c"]

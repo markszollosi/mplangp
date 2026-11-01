@@ -31,4 +31,35 @@ check 65 "duplicate parameter" 'def f(a, a):\n    return a\n'
 check 65 "'break' outside loop" 'break\n'
 check 65 "'continue' outside loop" 'if True:\n    continue\n'
 check 65 "'break' outside loop" 'while True:\n    def f():\n        break\n    break\n'
+check 70 "Index out of range." 'xs = [1]\nxs[1]\n'
+check 70 "Index out of range." 'xs = [1]\nxs[5] = 2\n'
+check 70 "Key 'k' not found." 'm = {}\nm["k"]\n'
+check 70 "Map keys must be strings." 'm = {1: 2}\n'
+check 70 "Can only loop over lists, maps and strings." 'for x in 5:\n    print(x)\n'
+check 70 "Only lists, maps and strings can be indexed." 'x = 5\nx[0]\n'
+check 70 "pop from empty list." 'pop([])\n'
+check 70 "int(x) cannot parse the string." 'int("abc")\n'
+check 65 "expected ']'" 'x = [1, 2\ny = 3\n'
+check 65 "expected 'in'" 'for x range(3):\n    print(x)\n'
+check 70 "invalid JSON" 'import json\njson.parse("{bad")\n'
+check 70 "invalid JSON: trailing characters" 'import json\njson.parse("1 2")\n'
+check 70 "cannot encode functions or modules." 'import json\nimport fs\njson.dump(fs.read)\n'
+check 70 "cannot read '/nonexistent/nope'" 'import fs\nfs.read("/nonexistent/nope")\n'
+check 70 "bad pattern" 'import re\nre.test("(", "x")\n'
+check 70 "sql error" 'import db\nh = db.open(":memory:")\ndb.exec(h, "nonsense")\n'
+check 70 "statement needs 1 parameters but got 0." 'import db\nh = db.open(":memory:")\ndb.query(h, "select ?", [])\n'
+check 70 "needs a non-empty list of strings." 'import proc\nproc.run([])\n'
+check 70 "unb64: invalid base64 character." 'import enc\nenc.unb64("!!")\n'
+check 70 "color: unknown style" 'import io\nio.color("plaid", "x")\n'
+check 70 "takes an http(s) url" 'import http\nhttp.get("file:///etc/passwd")\n'
+check 70 "unknown style" 'import io\nio.color("nope", "x")\n'
+check 65 "\\x00 is not allowed in strings" 'x = "a\\x00b"\n'
+awk 'BEGIN { for (i = 0; i < 300; i++) printf "v%d = \"s%d\"\n", i, i; print "print(v299 + v0)"; print "print(v150)" }' > "$src"
+if [ "$("$bin" "$src" 2> /dev/null)" = "s299s0
+s150" ]; then
+	echo "PASS wide constants (600 names and literals)"
+else
+	echo "FAIL wide constants (600 names and literals)"
+	fail=1
+fi
 exit $fail

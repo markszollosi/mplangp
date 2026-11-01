@@ -25,6 +25,7 @@ static const struct {
 	{"and", TOK_AND}, {"or", TOK_OR}, {"not", TOK_NOT},
 	{"def", TOK_DEF}, {"return", TOK_RETURN}, {"import", TOK_IMPORT},
 	{"break", TOK_BREAK}, {"continue", TOK_CONTINUE},
+	{"for", TOK_FOR}, {"in", TOK_IN},
 };
 
 Lexer *lexer_new(const char *source)
@@ -284,6 +285,22 @@ Token lexer_next(Lexer *lx)
 		case ':': return op(lx, TOK_COLON, TOK_ERROR);
 		case ',': return op(lx, TOK_COMMA, TOK_ERROR);
 		case '.': return op(lx, TOK_DOT, TOK_ERROR);
+		case '[':
+			lx->paren++;
+			return op(lx, TOK_LBRACKET, TOK_ERROR);
+		case '{':
+			lx->paren++;
+			return op(lx, TOK_LBRACE, TOK_ERROR);
+		case ']':
+			if (lx->paren > 0) {
+				lx->paren--;
+			}
+			return op(lx, TOK_RBRACKET, TOK_ERROR);
+		case '}':
+			if (lx->paren > 0) {
+				lx->paren--;
+			}
+			return op(lx, TOK_RBRACE, TOK_ERROR);
 		case '(':
 			lx->paren++;
 			return op(lx, TOK_LPAREN, TOK_ERROR);

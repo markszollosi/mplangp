@@ -33,11 +33,18 @@ static bool constant(Chunk *c, Value v, int line, OpCode op)
 		}
 	}
 	if (idx < 0) {
-		if (c->constants.count >= 256) {
+		if (c->constants.count >= 65536) {
 			value_free(v);
 			return fail(line, "too many constants");
 		}
 		idx = chunk_add_constant(c, v);
+	}
+	if (idx > 255) {
+		chunk_write(c, OP_WIDE, line);
+		chunk_write(c, op, line);
+		chunk_write(c, (uint8_t)(idx >> 8), line);
+		chunk_write(c, (uint8_t)(idx & 0xff), line);
+		return true;
 	}
 	chunk_write(c, op, line);
 	chunk_write(c, (uint8_t)idx, line);
@@ -82,7 +89,15 @@ static bool add_local(const char *name, int length, int line)
 	return true;
 }
 
-static bool collect_locals(Stmt *s)
+#define FORS_MAX 16
+#define H(n) { "$it" #n, "$ix" #n }
+static const char *const hidden[FORS_MAX][2] = {
+	H(0), H(1), H(2), H(3), H(4), H(5), H(6), H(7),
+	H(8), H(9), H(10), H(11), H(12), H(13), H(14), H(15)
+};
+static int fordepth;
+
+static bool collect_locals(Stmt *s, int fd)
 {
 	for (; s; s = s->next) {
 		switch (s->type) {
@@ -91,11 +106,20 @@ static bool collect_locals(Stmt *s)
 				return false;
 			break;
 		case STMT_IF:
-			if (!collect_locals(s->as.if_stmt.then_branch) || !collect_locals(s->as.if_stmt.else_branch))
+			if (!collect_locals(s->as.if_stmt.then_branch, fd) || !collect_locals(s->as.if_stmt.else_branch, fd))
 				return false;
 			break;
 		case STMT_WHILE:
-			if (!collect_locals(s->as.while_stmt.body))
+			if (!collect_locals(s->as.while_stmt.body, fd))
+				return false;
+			break;
+		case STMT_FOR:
+			if (fd >= FORS_MAX)
+				return fail(s->line, "for loops nested too deeply");
+			if (!add_local(s->as.for_stmt.name, s->as.for_stmt.length, s->line) ||
+			    !add_local(hidden[fd][0], (int)strlen(hidden[fd][0]), s->line) ||
+			    !add_local(hidden[fd][1], (int)strlen(hidden[fd][1]), s->line) ||
+			    !collect_locals(s->as.for_stmt.body, fd + 1))
 				return false;
 			break;
 		default:
@@ -178,6 +202,7 @@ static bool expr(Chunk *c, Expr *e)
 		case TOK_LE: op = OP_LE; break;
 		case TOK_GT: op = OP_GT; break;
 		case TOK_GE: op = OP_GE; break;
+		case TOK_IN: op = OP_IN; break;
 		default: return fail(line, "bad binary operator");
 		}
 		if (!expr(c, e->as.binary.left) || !expr(c, e->as.binary.right))
@@ -219,6 +244,29 @@ static bool expr(Chunk *c, Expr *e)
 		if (!expr(c, e->as.attr.object))
 			return false;
 		return name_op(c, e->as.attr.name, e->as.attr.length, line, OP_GET_ATTR);
+	case EXPR_LIST:
+		if (e->as.list.n > 255)
+			return fail(line, "list literal too long");
+		for (int i = 0; i < e->as.list.n; i++)
+			if (!expr(c, e->as.list.items[i]))
+				return false;
+		chunk_write(c, OP_LIST, line);
+		chunk_write(c, (uint8_t)e->as.list.n, line);
+		return true;
+	case EXPR_MAP:
+		if (e->as.map.n > 255)
+			return fail(line, "map literal too long");
+		for (int i = 0; i < e->as.map.n; i++)
+			if (!expr(c, e->as.map.keys[i]) || !expr(c, e->as.map.vals[i]))
+				return false;
+		chunk_write(c, OP_MAP, line);
+		chunk_write(c, (uint8_t)e->as.map.n, line);
+		return true;
+	case EXPR_INDEX:
+		if (!expr(c, e->as.index.object) || !expr(c, e->as.index.index))
+			return false;
+		chunk_write(c, OP_INDEX, line);
+		return true;
 	}
 	return fail(line, "bad expression");
 }
@@ -277,6 +325,49 @@ static bool stmt(Chunk *c, Stmt *s)
 				return false;
 		return true;
 	}
+	case STMT_SETINDEX:
+		if (!expr(c, s->as.setindex.object) || !expr(c, s->as.setindex.index) || !expr(c, s->as.setindex.value))
+			return false;
+		chunk_write(c, OP_SET_INDEX, line);
+		return true;
+	case STMT_FOR: {
+		if (loops.depth >= LOOPS_MAX)
+			return fail(line, "loops nested too deeply");
+		if (fordepth >= FORS_MAX)
+			return fail(line, "for loops nested too deeply");
+		const char *it = hidden[fordepth][0], *ix = hidden[fordepth][1];
+		int itlen = (int)strlen(it), ixlen = (int)strlen(ix);
+		if (!expr(c, s->as.for_stmt.iter) || !var_op(c, it, itlen, line, true) ||
+		    !constant(c, value_int(0), line, OP_CONST) || !var_op(c, ix, ixlen, line, true))
+			return false;
+		int start = c->count;
+		loops.start[loops.depth] = start;
+		loops.mark[loops.depth++] = loops.nbreaks;
+		fordepth++;
+		if (!var_op(c, it, itlen, line, false) || !var_op(c, ix, ixlen, line, false))
+			return false;
+		chunk_write(c, OP_ITER_HAS, line);
+		int exit_j = emit_jump(c, OP_JUMP_IF_FALSE, line);
+		chunk_write(c, OP_POP, line);
+		if (!var_op(c, it, itlen, line, false) || !var_op(c, ix, ixlen, line, false))
+			return false;
+		chunk_write(c, OP_ITER_GET, line);
+		if (!var_op(c, s->as.for_stmt.name, s->as.for_stmt.length, line, true) ||
+		    !var_op(c, ix, ixlen, line, false) || !constant(c, value_int(1), line, OP_CONST))
+			return false;
+		chunk_write(c, OP_ADD, line);
+		if (!var_op(c, ix, ixlen, line, true) || !stmts(c, s->as.for_stmt.body) || !emit_loop(c, start, line))
+			return false;
+		if (!patch_jump(c, exit_j, line))
+			return false;
+		chunk_write(c, OP_POP, line);
+		fordepth--;
+		loops.depth--;
+		while (loops.nbreaks > loops.mark[loops.depth])
+			if (!patch_jump(c, loops.breaks[--loops.nbreaks], line))
+				return false;
+		return true;
+	}
 	case STMT_BREAK:
 		if (loops.depth <= loops.floor)
 			return fail(line, "'break' outside loop");
@@ -307,8 +398,9 @@ static bool stmt(Chunk *c, Stmt *s)
 		f->arity = s->as.def.nparams;
 		scope.n = 0;
 		scope.infunc = true;
-		int saved_floor = loops.floor;
+		int saved_floor = loops.floor, saved_for = fordepth;
 		loops.floor = loops.depth;
+		fordepth = 0;
 		bool ok = true;
 		for (int i = 0; ok && i < s->as.def.nparams; i++) {
 			Expr *p = s->as.def.params[i];
@@ -317,7 +409,7 @@ static bool stmt(Chunk *c, Stmt *s)
 			else
 				ok = add_local(p->as.name.name, p->as.name.length, p->line);
 		}
-		ok = ok && collect_locals(s->as.def.body);
+		ok = ok && collect_locals(s->as.def.body, 0);
 		f->nlocals = scope.n;
 		ok = ok && stmts(&f->chunk, s->as.def.body) &&
 		    constant(&f->chunk, value_none(), line, OP_CONST);
@@ -326,6 +418,7 @@ static bool stmt(Chunk *c, Stmt *s)
 		scope.infunc = false;
 		scope.n = 0;
 		loops.floor = saved_floor;
+		fordepth = saved_for;
 		if (!ok) {
 			function_release(f);
 			return false;
@@ -353,6 +446,7 @@ bool compile(Program *prog, Chunk *chunk)
 	scope.infunc = false;
 	scope.n = 0;
 	loops.depth = loops.floor = loops.nbreaks = 0;
+	fordepth = 0;
 	if (!stmts(chunk, prog->body))
 		return false;
 	chunk_write(chunk, OP_HALT, chunk->count ? chunk->lines[chunk->count - 1] : 0);

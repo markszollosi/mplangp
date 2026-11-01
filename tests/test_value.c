@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "value.h"
+#include "mplangpfunc.h"
 
 static char capture_buf[256];
 
@@ -128,6 +129,40 @@ static void test_array(void)
 	assert(arr.values == NULL);
 }
 
+static void test_collections(void)
+{
+	Value l = mp_list(), m = mp_map();
+	mp_push(l, value_int(1));
+	mp_push(l, value_string("a", 1));
+	mp_set(m, "k", value_copy(l));
+	mp_set(m, "n", value_none());
+	assert(l.as.list->refs == 2);
+	assert(m.as.map->count == 2);
+	assert(mp_get(m, "k")->type == VAL_LIST);
+	assert(mp_get(m, "zz") == NULL);
+	assert(value_is_truthy(l) && value_is_truthy(m));
+	assert(strcmp(capture_print(l), "[1, \"a\"]") == 0);
+	assert(strcmp(capture_print(m), "{\"k\": [1, \"a\"], \"n\": None}") == 0);
+
+	Value l2 = mp_list();
+	mp_push(l2, value_int(1));
+	mp_push(l2, value_string("a", 1));
+	assert(value_equals(l, l2));
+	mp_push(l2, value_int(3));
+	assert(!value_equals(l, l2));
+
+	value_map_put(m, "n", value_int(5));
+	assert(m.as.map->count == 2 && mp_get(m, "n")->as.i == 5);
+
+	Value c = value_copy(m);
+	assert(m.as.map->refs == 2);
+	value_free(c);
+	value_free(m);
+	assert(l.as.list->refs == 1);
+	value_free(l);
+	value_free(l2);
+}
+
 int main(void)
 {
 	test_construction();
@@ -135,6 +170,7 @@ int main(void)
 	test_equals();
 	test_print();
 	test_array();
+	test_collections();
 	printf("all tests passed\n");
 	return 0;
 }

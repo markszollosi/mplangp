@@ -1,0 +1,19 @@
+hello server
+second line
+pong
+True
+127.0.0.1
+False
+["127.0.0.1"]
+1
+2
+[{"id": 1, "name": "ann", "score": 1.5}, {"id": 2, "name": "bob", "score": None}]
+[{"name": "ann"}]
+True
+3
+True
+True
+True
+True
+True
+True

@@ -1,0 +1,60 @@
+import fs
+import path
+import os
+import proc
+import time
+
+print(path.join("a", "b", "c.txt"))
+print(path.join("a", "/abs", "x"))
+print(path.base("/x/y/z.tar.gz"))
+print(path.dir("/x/y/z.tar.gz"))
+print(path.ext("/x/y/z.tar.gz"))
+print(path.stem("/x/y/z.tar.gz"))
+print(path.norm("a/./b/../c//d"))
+print(path.abs("/a/b/../c"))
+print(path.dir("file"))
+print(path.dir("/"))
+
+d = "/tmp/mplangp_test_system"
+fs.mkdir(d + "/sub/deep")
+fs.write(d + "/a.txt", "hello\n")
+fs.append(d + "/a.txt", "world\n")
+print(fs.read(d + "/a.txt"))
+print(fs.list(d))
+st = fs.stat(d + "/a.txt")
+print(st["size"])
+print(st["dir"])
+print(fs.glob(d + "/*.txt") == [d + "/a.txt"])
+fs.copy(d + "/a.txt", d + "/b.txt")
+fs.rename(d + "/b.txt", d + "/c.txt")
+print(fs.list(d))
+print(fs.isfile(d + "/c.txt"))
+print(fs.isdir(d + "/sub"))
+fs.remove(d + "/c.txt")
+fs.remove(d + "/a.txt")
+fs.remove(d + "/sub/deep")
+fs.remove(d + "/sub")
+fs.remove(d)
+print(fs.exists(d))
+
+print(os.env("MPLANGP_SURELY_UNSET"))
+os.setenv("MPLANGP_T", "1")
+print(os.env("MPLANGP_T"))
+print(os.environ()["MPLANGP_T"])
+print(type(os.pid()))
+print(len(args()))
+
+print(proc.run(["echo", "hi"]))
+print(proc.sh("echo err 1>&2; exit 3"))
+print(proc.sh("cat", "piped input"))
+print(proc.which("sh") != None)
+print(proc.which("definitely-not-a-binary"))
+
+print(time.format(0, "%Y-%m-%d %H:%M:%S", True))
+print(time.iso(86400 * 365))
+print(time.parse("2001-09-09 01:46:40", "%Y-%m-%d %H:%M:%S", True))
+print(time.parts(1000000000, True))
+t0 = time.mono()
+time.sleep(0.05)
+print(time.mono() - t0 >= 0.05)
+print(time.now() > 1700000000)

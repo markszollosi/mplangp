@@ -1,0 +1,37 @@
+a/b/c.txt
+/abs/x
+z.tar.gz
+/x/y
+.gz
+z.tar
+a/c/d
+/a/c
+.
+/
+hello
+world
+
+["a.txt", "sub"]
+12
+False
+True
+["a.txt", "c.txt", "sub"]
+True
+True
+False
+None
+1
+1
+int
+0
+{"code": 0, "out": "hi\n", "err": ""}
+{"code": 3, "out": "", "err": "err\n"}
+{"code": 0, "out": "piped input", "err": ""}
+True
+None
+1970-01-01 00:00:00
+1971-01-01T00:00:00Z
+1000000000
+{"year": 2001, "month": 9, "day": 9, "hour": 1, "minute": 46, "second": 40, "weekday": 0, "yearday": 252}
+True
+True
