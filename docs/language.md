@@ -160,6 +160,9 @@ print(2 in [1, 2, 3])
 print("k" in {"k": 0})
 print("ell" in "hello")
 print(not ("z" in "hello"))
+c = "7"
+print(c in "0123456789")
+print("x" in "0123456789")
 ```
 
 ```output
@@ -167,7 +170,11 @@ True
 True
 True
 True
+True
+False
 ```
+
+`c in "0123456789"` is the idiom for a character-class test (digit, vowel, delimiter).
 
 ### Indexing
 
@@ -371,14 +378,37 @@ Rules:
 - A function exists once its `def` line has *executed*; call it only after that.
 - A function without `return`, or a bare `return`, gives `None`.
 - Functions are values: store them in variables, lists and maps (`ops = {"add": add}; ops["add"](1, 2)`), and call through them.
-- Recursion works but is limited to a call depth of 64 (`Stack overflow.` beyond that). Prefer loops.
+- Recursion works but the interpreter allows only 64 active calls **including the main program**, so a function can call itself at most 63 levels deep (`Stack overflow.` beyond that, which is fatal). Prefer loops, and build tables like Fibonacci bottom-up instead of recursing from the top.
 - The value stack holds 256 slots in total, so calls with enormous argument lists or deeply nested expressions can overflow it.
 
 ### Scope
 - At the top level every variable is global.
 - Inside a function, the parameters and **every name assigned anywhere in the function body** (including `for` loop variables) are local for the *whole* body. A local that has not been assigned yet reads as `None`.
 - Any other name is looked up as a global **at call time** (this includes builtins and imported modules).
+- A parameter or local with the same name as a builtin or module **hides it inside that function**. `def wrap(text, width)` makes `text(...)` unusable in the body (calling the string fails with `Can only call functions.`); name it `text_in`. Names to avoid for variables and parameters: `len push pop keys values has get remove type text int float range sort slice args`, and module names such as `str`, `math`, `time`, `path`, `os`, `json`, `re`, `net`, `db`, `sys`, `io`, `fs`.
 - Consequence: **a function cannot rebind a global variable.** `x = 1` inside a function creates a new local `x`. But a function *can mutate* a global list or map. To share state, keep it in a map or list, or return values.
+
+When several functions must share mutable data (a parser position, counters, a flag), keep it in one map and pass the map around:
+
+```my
+def next_char(st):
+    if st["pos"] >= len(st["text"]):
+        return None
+    c = st["text"][st["pos"]]
+    st["pos"] = st["pos"] + 1
+    return c
+
+st = {"text": "ab", "pos": 0}
+print(next_char(st))
+print(next_char(st))
+print(next_char(st))
+```
+
+```output
+a
+b
+None
+```
 
 ```my
 counter = 0
@@ -452,6 +482,22 @@ Index out of range.
 
 Runtime messages you will meet: `Undefined variable 'x'.`, `Unsupported operand types.`, `Division by zero.`, `Index out of range.`, `Key 'k' not found.`, `Expected N arguments but got M.`, `Can only call functions.`, `Only modules have attributes.`, `Module 'm' has no attribute 'f'.`, `No module named 'm'.`, `Stack overflow.`, and messages from module functions such as `cannot read '/x': No such file or directory`.
 
+### Syntax errors you will meet
+
+Syntax errors name only the line and the first token the parser could not accept, so match the message to the usual cause:
+
+| message | usual cause |
+|---|---|
+| `expected ')'` | two arguments to `print(a, b)`; a ternary `a if c else b`; a missing `)`; `x not in y`; a number like `1e3` or `.5` |
+| `expected ':'` | missing colon after `if`, `while`, `for`, `def`, `else` |
+| `expected newline` | two statements on one line; chained assignment `a = b = 1`; `x = 1 x = 2` |
+| `invalid syntax` | `+=`, `//`, `**`, `a[1:2]`, a stray operator, wrong indentation at a statement start |
+| `expected an indented block` | a block with no statement after the colon (there is no `pass`; write `None`) |
+| `cannot assign to expression` | `obj.field = v` or `f(x) = v` (maps are written with `m["field"] = v`) |
+| `tab in indentation` | use spaces |
+| `unterminated string` | missing closing quote; strings cannot span lines |
+| `'return' outside function`, `'break' outside loop`, `nested def is not supported` | self-explanatory |
+
 Because errors are fatal, **check first**: `fs.exists(p)` before `fs.read(p)`, `has(m, k)` before `m[k]`, `len(xs) > 0` before `pop(xs)`, `proc.which(cmd)` before running a command. Errors from the outside world (network, missing files) also stop the program; use the pre-checks in [cookbook.md](cookbook.md#defensive-patterns), or run risky work in a child process with `proc.run([...])` whose non-zero exit is just data.
 
 stdout is buffered: when both streams go to the same place, stderr text may appear before earlier `print` output. Call `io.flush()` (or `io.eprint`, which flushes first) when ordering matters.
@@ -460,7 +506,7 @@ stdout is buffered: when both streams go to the same place, stderr text may appe
 
 | limit | value | failure |
 |---|---|---|
-| call depth | 64 | `Stack overflow.` |
+| call depth | 64 frames (the main program is one, so 63 nested calls) | `Stack overflow.` |
 | value stack | 256 slots | `Stack overflow.` |
 | distinct constants + names per function body / main program | 65536 | `too many constants` |
 | local variables per function | 255 | `too many local variables` |

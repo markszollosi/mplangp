@@ -79,7 +79,10 @@ Read these before writing code.
 11. **Define before use.** A `def` runs when execution reaches it; call functions only after. `def` is allowed only at top level, never inside another function.
 12. **`for` loops** iterate lists, map keys (in insertion order) and string bytes; use `range(n)` for counting. Blocks need at least one statement (`None` is a no-op).
 13. **Regex is POSIX**: `[[:digit:]]`, not `\d`.
-14. **stdout is buffered**; use `io.flush()` or `io.eprint` when interleaving with stderr or other processes.
+14. **Parameter and variable names hide builtins and modules** inside that function: `def f(text)` kills `text(...)`, `get`, `keys`, `type`, `len`, `str`, `time`... Pick other names (`text_in`, `key_list`, `kind`).
+15. **Recursion is limited to 63 levels** (the main program takes one of the 64 frames). Memoized recursion such as `fib(70)` called cold still overflows; fill the table bottom-up with a loop.
+16. **Numbers to text**: `text(x)` for plain conversion, `str.fixed(x, 2)` for fixed decimals, `str.pad_left/pad_right` for aligned columns.
+17. **stdout is buffered**; use `io.flush()` or `io.eprint` when interleaving with stderr or other processes.
 
 ## How to be productive
 

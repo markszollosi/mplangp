@@ -13,6 +13,8 @@ from the clocks, `int` from `parse`.
 | `parse(text, fmt?, utc?)` | int | inverse of `format` (`strptime`); the **whole text must match**. Local time zone unless `utc` is `True` |
 | `parts(ts, utc?)` | map | `year month day hour minute second weekday yearday`; `weekday` is `0` = Sunday, `yearday` starts at 1 |
 
+`iso` is **always UTC** (note the `Z`). For the local date or time use `format` without the `utc` flag: `time.format(time.now(), "%Y-%m-%d")` is today's date in the machine's time zone, and `time.format(time.now(), "%Y-%m-%dT%H:%M:%S%z")` adds the offset.
+
 Common `fmt` codes: `%Y` year, `%m` month, `%d` day, `%H` `%M` `%S` time, `%A` weekday name, `%B` month name, `%j` day of year, `%z` offset, `%s` epoch seconds (platform dependent).
 Pass `True` for `utc` in programs whose output must not depend on the machine's time zone.
 

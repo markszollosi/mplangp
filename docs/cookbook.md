@@ -129,7 +129,53 @@ print(fib(40))
 102334155
 ```
 
-(Recursion depth is limited to 64 calls; convert deeper recursion into loops.)
+(Recursion is limited to 63 levels, so this only works for small `n` called from the top. `fib(70)` called cold would overflow while the cache is still empty. Warm the cache with a loop, or avoid recursion entirely:)
+
+```my
+def fib_loop(n):
+    a = 0
+    b = 1
+    for i in range(n):
+        t = a + b
+        a = b
+        b = t
+    return a
+
+print(fib_loop(90))
+```
+
+```output
+2880067194370816120
+```
+
+## Sorting records by a value, descending
+
+`sort` has no key or order option. Sort a list of numbers, then walk it backwards; or use the `sort_by` helper below (insertion sort, fine for hundreds of records) and reverse by index:
+
+```my
+totals = {"north": 70.75, "west": 132.5, "south": 129.96}
+
+def sort_pairs_desc(m):
+    names = keys(m)
+    out = []
+    for n in names:
+        i = 0
+        while i < len(out) and m[out[i]] >= m[n]:
+            i = i + 1
+        out = slice(out, 0, i) + [n] + slice(out, i, len(out))
+    return out
+
+for n in sort_pairs_desc(totals):
+    print(n + ": " + text(totals[n]))
+```
+
+```output
+west: 132.5
+south: 129.96
+north: 70.75
+```
+
+For ties broken alphabetically, sort the names first (`sort(names)`) and keep the `>=` comparison: equal values then keep alphabetical order.
 
 ## Sorting records
 
@@ -169,38 +215,59 @@ ann
 
 ## Formatting output
 
-There is no `format`; pad with `*` and `len`.
+There is no `format` or `%`. Use `str.fixed` for decimals and `str.pad_left` / `str.pad_right` for columns.
 
 ```my
-def pad(s, width):
-    s = text(s)
-    return s + " " * (width - len(s))
+import str
 
-rows = [["name", "qty"], ["apple", 3], ["fig", 12]]
-for r in rows:
-    print(pad(r[0], 8) + pad(r[1], 4) + "|")
+rows = [["name", "qty", "price"], ["apple", 3, 0.5], ["fig", 12, 12.255]]
+print(str.pad_right(rows[0][0], 8) + str.pad_left(rows[0][1], 5) + str.pad_left(rows[0][2], 8))
+for i in range(1, len(rows)):
+    r = rows[i]
+    print(str.pad_right(r[0], 8) + str.pad_left(text(r[1]), 5) + str.pad_left(str.fixed(r[2], 2), 8))
 ```
 
 ```output
-name    qty |
-apple   3   |
-fig     12  |
+name      qty   price
+apple       3    0.50
+fig        12   12.26
 ```
+
+Percentages and averages: `str.fixed(part * 100 / total, 1) + "%"`. Rounding to a number (not text): `math.round(x * 100) / 100`.
 
 ## Command-line program with arguments
 
-```my-norun
+`args()` returns the words after the script name, all as strings. Validate count and content, print usage to stderr and exit with status 2 (the convention for bad usage):
+
+```my-error
 import os
 import io
 
-a = args()
-if len(a) != 2:
-    io.eprint("usage: mplangp add.my X Y")
+def usage():
+    io.eprint("usage: add.my X Y")
     os.exit(2)
+
+def is_number(s):
+    if len(s) == 0:
+        return False
+    for ch in s:
+        if not (ch in "0123456789"):
+            return False
+    return True
+
+a = args()
+if len(a) != 2 or not is_number(a[0]) or not is_number(a[1]):
+    usage()
 print(int(a[0]) + int(a[1]))
 ```
 
-Run: `./mplangp add.my 2 3` prints `5`. Arguments are always strings; convert with `int` / `float`.
+```output
+usage: add.my X Y
+```
+
+Run with no arguments (as the test suite does) it prints the usage line to stderr and exits with status 2; `./mplangp add.my 2 3` prints `5`; `./mplangp add.my 2 x` is rejected by `is_number`.
+
+Branch on the first argument for sub-commands: `cmd = a[0]` then `if cmd == "add": ... elif cmd == "list": ...`.
 
 ## Word frequency of a file
 

@@ -17,6 +17,9 @@ Also useful from the language itself: `+` (concatenate), `*` (repeat), `in` (sub
 | `replace(s, old, new)` | str | replace **every** occurrence; `old` must be non-empty |
 | `find(s, needle)` | int | byte index of the first occurrence, or `-1` |
 | `starts(s, prefix)` / `ends(s, suffix)` | bool | |
+| `fixed(x, decimals)` | str | number as text with exactly `decimals` digits after the point (0 to 15), rounded: `fixed(2.5, 2)` is `"2.50"`, `fixed(1234.5678, 1)` is `"1234.6"`. This is how you print money and averages |
+| `pad_left(s, width, fill?)` | str | pad on the left to `width` bytes (right-align); `fill` is a one-character string, default space; longer strings are returned unchanged |
+| `pad_right(s, width, fill?)` | str | pad on the right (left-align) |
 
 ```my
 import str
@@ -46,6 +49,35 @@ a::b::c
 -1
 True
 True
+```
+
+Number formatting and aligned columns (`pad_*` need strings: convert numbers with `text()` or `fixed`):
+
+```my
+import str
+
+print(str.fixed(2.5, 2))
+print(str.fixed(1234.5678, 1))
+print(str.fixed(7, 0))
+print(str.fixed(2 / 3, 4))
+print("[" + str.pad_left("42", 6) + "]")
+print("[" + str.pad_right("ab", 6, ".") + "]")
+print(str.pad_left(text(7), 3, "0"))
+rows = [["apple", 3.5], ["fig", 12.25]]
+for r in rows:
+    print(str.pad_right(r[0], 8) + str.pad_left(str.fixed(r[1], 2), 7))
+```
+
+```output
+2.50
+1234.6
+7
+0.6667
+[    42]
+[ab....]
+007
+apple      3.50
+fig       12.25
 ```
 
 Recipes:

@@ -81,4 +81,6 @@ fs.remove(path)
 hello
 ```
 
+The full SQLite dialect is available: joins, `group by`, indexes, views, triggers, `pragma`, and upserts such as `insert into stock (name, qty) values (?, ?) on conflict (name) do update set qty = qty + excluded.qty` (the table needs a `unique` or `primary key` on `name`). Close databases you no longer need; data is committed automatically unless you opened a transaction with `begin`.
+
 Common mistakes: using `db.exec` for a `SELECT` (it runs but discards rows; use `query`), forgetting the `params` list for a statement that contains `?` (`statement needs 1 parameters but got 0.`), and pasting user text into SQL.
