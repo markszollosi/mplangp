@@ -10,10 +10,17 @@ its own thing and has no name yet. Source files use the `.my` extension.
 	make
 	./mplangp program.my
 
-`make test` builds and runs every module's standalone test, then runs each
-`tests/samples/*.my` program and diffs its output against the `.expected` file.
+`make test` builds and runs every module's standalone test, runs each
+`tests/samples/*.my` program and diffs its output against the `.expected` file, checks the error
+cases, and executes every example in `docs/`.
 
 Exit codes: 0 ok, 65 syntax or compile error, 70 runtime error, 1 usage or I/O.
+
+## Documentation
+
+Full documentation for writing programs without reading the interpreter lives in [`docs/`](docs/README.md):
+the [language reference](docs/language.md), the [builtins](docs/builtins.md), one page per
+[module](docs/modules/README.md) and a [cookbook](docs/cookbook.md). Every example in it is executed by `make test`.
 
 ## Language
 

@@ -114,7 +114,11 @@ is an error, not `nan` or a crash.
    error your module can raise.
 4. Run `make test`; it must exit 0. For a leak check on macOS:
    `leaks --atExit -- ./mplangp tests/samples/<module>.my` must report 0.
-5. Mention the module in `README.md` only if it is a headline feature.
+5. Write `docs/modules/<module>.md` (copy the shape of an existing page: purpose, function table with
+   `` `name(args)` `` entries, errors, examples in ```` ```my ```` blocks followed by an ```` ```output ```` block)
+   and add the module to `docs/modules/README.md`. `tests/docs.sh` fails if an exported function is
+   missing from its page, and runs every example. Use ```` ```my-norun ```` for examples that need a
+   network, a desktop or interactive input.
 
 ## Things that go wrong
 

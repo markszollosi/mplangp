@@ -8,6 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `make test` runs all module tests (`tests/test_<module>.c`, each with its own `main()`) and then `tests/run.sh`, which diffs every `tests/samples/*.my` against its `.expected`.
 - One module test: `make tests/test_vm && ./tests/test_vm` (replace `vm` with value, lexer, ast, parser, chunk, table or compiler).
 - Error cases (exit code + message) live in `tests/errors.sh`.
+- `docs/` is the black-box documentation for programmers of the language (agents read it instead of the source). `tests/docs.sh` (part of `make test`) runs every ```` ```my ```` / ```` ```my-error ```` fenced example, compares a following ```` ```output ```` block, and fails when a function exported by `modules/*.c` or `src/builtin.c` is missing from its page. Changing language behaviour or a module means updating `docs/` in the same change.
 - One sample: `./mplangp tests/samples/fizzbuzz.my`.
 - Writing a native module: follow `modules/README.md` (required reading before touching `modules/` or `src/mplangpfunc.h`).
 - Adding a source file to the interpreter: add it to `SRC` in the `Makefile` and, if it has a test, to `TESTS` plus a `T_<name>` source list.

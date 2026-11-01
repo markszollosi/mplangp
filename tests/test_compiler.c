@@ -116,11 +116,11 @@ int main(void)
 		Program p = { head };
 		Chunk c;
 		chunk_init(&c);
-		if (compile(&p, &c)) {
-			printf("FAIL too many constants: compiled\n");
+		if (!compile(&p, &c)) {
+			printf("FAIL wide constants: not compiled\n");
 			failures++;
 		} else {
-			printf("ok   too many constants\n");
+			printf("ok   wide constants\n");
 		}
 		chunk_free(&c);
 	}

@@ -33,11 +33,18 @@ static bool constant(Chunk *c, Value v, int line, OpCode op)
 		}
 	}
 	if (idx < 0) {
-		if (c->constants.count >= 256) {
+		if (c->constants.count >= 65536) {
 			value_free(v);
 			return fail(line, "too many constants");
 		}
 		idx = chunk_add_constant(c, v);
+	}
+	if (idx > 255) {
+		chunk_write(c, OP_WIDE, line);
+		chunk_write(c, op, line);
+		chunk_write(c, (uint8_t)(idx >> 8), line);
+		chunk_write(c, (uint8_t)(idx & 0xff), line);
+		return true;
 	}
 	chunk_write(c, op, line);
 	chunk_write(c, (uint8_t)idx, line);

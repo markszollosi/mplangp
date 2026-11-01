@@ -303,15 +303,24 @@ InterpretResult vm_run(Chunk *main_chunk)
 			return error(chunk, end - 1, "%s", "Unexpected end of code.");
 		}
 		OpCode op = (OpCode)*ip++;
+		bool wide = false;
+		if (op == OP_WIDE) {
+			if (ip >= end) {
+				return error(chunk, at, "%s", "Truncated instruction.");
+			}
+			wide = true;
+			op = (OpCode)*ip++;
+		}
 		switch (op) {
 		case OP_CONST:
 		case OP_GET_GLOBAL:
 		case OP_SET_GLOBAL:
 		case OP_DEFINE_GLOBAL: {
-			if (ip >= end) {
+			if (end - ip < (wide ? 2 : 1)) {
 				return error(chunk, at, "%s", "Truncated instruction.");
 			}
-			int idx = *ip++;
+			int idx = wide ? (ip[0] << 8) | ip[1] : ip[0];
+			ip += wide ? 2 : 1;
 			if (idx >= chunk->constants.count) {
 				return error(chunk, at, "%s", "Bad constant index.");
 			}
@@ -632,10 +641,11 @@ InterpretResult vm_run(Chunk *main_chunk)
 		}
 		case OP_IMPORT:
 		case OP_GET_ATTR: {
-			if (ip >= end) {
+			if (end - ip < (wide ? 2 : 1)) {
 				return error(chunk, at, "%s", "Truncated instruction.");
 			}
-			int idx = *ip++;
+			int idx = wide ? (ip[0] << 8) | ip[1] : ip[0];
+			ip += wide ? 2 : 1;
 			if (idx >= chunk->constants.count || chunk->constants.values[idx].type != VAL_STRING) {
 				return error(chunk, at, "%s", "Bad constant index.");
 			}

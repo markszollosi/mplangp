@@ -54,4 +54,12 @@ check 70 "color: unknown style" 'import io\nio.color("plaid", "x")\n'
 check 70 "takes an http(s) url" 'import http\nhttp.get("file:///etc/passwd")\n'
 check 70 "unknown style" 'import io\nio.color("nope", "x")\n'
 check 65 "\\x00 is not allowed in strings" 'x = "a\\x00b"\n'
+awk 'BEGIN { for (i = 0; i < 300; i++) printf "v%d = \"s%d\"\n", i, i; print "print(v299 + v0)"; print "print(v150)" }' > "$src"
+if [ "$("$bin" "$src" 2> /dev/null)" = "s299s0
+s150" ]; then
+	echo "PASS wide constants (600 names and literals)"
+else
+	echo "FAIL wide constants (600 names and literals)"
+	fail=1
+fi
 exit $fail
