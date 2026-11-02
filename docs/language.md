@@ -158,6 +158,8 @@ print(9223372036854775807 + 1)
 Integer overflow.
 ```
 
+An integer literal above 9223372036854775807 is a compile error (`integer literal too large`), so the smallest int cannot be written as a literal; use `-9223372036854775807 - 1`.
+
 ### Membership: `in`
 
 `x in container` returns a bool: for a list, whether an element equals `x`; for a map, whether `x` is a key (string); for a string, whether `x` is a substring. There is **no `not in`**; write `not (x in c)`.

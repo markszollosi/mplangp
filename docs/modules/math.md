@@ -9,7 +9,7 @@ negative number, logarithm of zero or less) are fatal runtime errors, not `nan`.
 | `pow(x, y)` | float | `x` to the power `y` |
 | `floor(x)` / `ceil(x)` | int | round down / up |
 | `round(x)` | int | nearest integer, halves away from zero (`round(2.5)` is `3`, `round(-2.5)` is `-3`) |
-| `abs(x)` | same type as `x` | |
+| `abs(x)` | same type as `x` | `abs` of the smallest int (-9223372036854775808) wraps and returns it unchanged |
 | `min(a, b, ...)` / `max(a, b, ...)` | int or float | one or more numbers; keeps the type of the chosen value |
 | `sin(x)` `cos(x)` `tan(x)` | float | radians |
 | `atan2(y, x)` | float | angle in radians |
