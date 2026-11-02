@@ -101,14 +101,19 @@ BYE
 None
 ```
 
-A timeout set with `net.timeout` ends the program with a `timed out` error when it expires (there is no way to catch it), so use it as a watchdog against hangs, not for retries; for retries use `net.open` first, or run the networking in a child process with `proc`. For two independent programs talking to each other, start the second with `proc.sh("mplangp other.my &")`.
+A timeout set with `net.timeout` ends the program with a `timed out` error when it expires (there is no way to catch it), so use it as a watchdog against hangs, not for retries; for retries use `net.open` first, or run the networking in a child process with `proc`.
+
+**Idle or slow clients:** a server that sets `net.timeout` on a connection dies when one client stalls (a browser preconnect, for example); a server that sets none can block forever in `readline`. A single-threaded server cannot survive either, so for a long-running server put each connection's handling in a child process (`proc`), or keep the timeout generous and let a supervisor restart the server.
+
+**Sending to a client that went away:** the program is never killed by a broken pipe (SIGPIPE is ignored). `send` to a peer that already closed may still return the byte count (the data is lost in the kernel buffer) or fail with a fatal `send failed: ...` error, which cannot be caught. Treat `send` as best effort and have the client confirm what matters. For two independent programs talking to each other, start the second with `proc.sh("mplangp other.my &")`.
 
 ## Patterns
 
-A small server that answers each client with a line:
+A small server that answers each client with a line (`print` is buffered, so call `io.flush()` after each log line or nothing shows until exit):
 
 ```my-norun
 import net
+import io
 
 server = net.listen(8080)
 print("listening on 8080")
@@ -116,6 +121,8 @@ while True:
     conn = net.accept(server)
     net.timeout(conn, 5)
     request = net.readline(conn)
+    print("request:", request)
+    io.flush()
     if request != None:
         net.send(conn, "echo: " + request + "\n")
     net.close(conn)
