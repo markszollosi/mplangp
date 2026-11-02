@@ -3,13 +3,11 @@
 # (open and closed). Deny with the candidates; retry with ISSUE_CHECKED=1
 # in front of the command once it is confirmed to be new.
 cmd=$(jq -r '.tool_input.command // empty')
-case "$cmd" in
-*"gh issue create"*) ;;
-*) exit 0 ;;
-esac
-case "$cmd" in
-*ISSUE_CHECKED=1*) exit 0 ;;
-esac
+seg='^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*'
+printf '%s\n' "$cmd" | sed -E 's/(;|&&|\|\||\|)/\
+/g' | grep -Eq "${seg}gh[[:space:]]+issue[[:space:]]+create" || exit 0
+printf '%s\n' "$cmd" | sed -E 's/(;|&&|\|\||\|)/\
+/g' | grep -Eq "${seg}([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*ISSUE_CHECKED=1[[:space:]]+(.*[[:space:]])?gh[[:space:]]+issue[[:space:]]+create" && exit 0
 deny()
 {
 	jq -n --arg r "$1" \
