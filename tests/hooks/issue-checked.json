@@ -1,0 +1,1 @@
+{"tool_name":"Bash","session_id":"t1","tool_input":{"command":"ISSUE_CHECKED=1 gh issue create --title \"x\" --body y"}}

@@ -2,7 +2,7 @@
   "hooks": {
     "SessionStart": [
       {
-        "hooks": [{ "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-map.sh" }]
+        "hooks": [{ "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-map.sh" }, { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prune.sh" }]
       }
     ],
     "PreToolUse": [
