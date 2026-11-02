@@ -11,7 +11,10 @@ typedef struct {
 	Token cur;
 	bool failed;
 	bool in_def;
+	int depth;
 } Parser;
+
+#define MAX_DEPTH 128
 
 static Expr *parse_expr(Parser *p);
 static Stmt *parse_stmt(Parser *p);
@@ -32,6 +35,36 @@ static void error_at(Parser *p, const char *msg)
 	} else {
 		fprintf(stderr, "line %d: %s\n", p->cur.line, msg);
 	}
+}
+
+static bool enter(Parser *p)
+{
+	if (p->depth >= MAX_DEPTH) {
+		error_at(p, "nesting too deep");
+		return false;
+	}
+	p->depth++;
+	return true;
+}
+
+static Expr *parse_expr_inner(Parser *p);
+static Expr *parse_expr(Parser *p)
+{
+	if (!enter(p))
+		return NULL;
+	Expr *e = parse_expr_inner(p);
+	p->depth--;
+	return e;
+}
+
+static Stmt *parse_stmt_inner(Parser *p);
+static Stmt *parse_stmt(Parser *p)
+{
+	if (!enter(p))
+		return NULL;
+	Stmt *s = parse_stmt_inner(p);
+	p->depth--;
+	return s;
 }
 
 static bool expect(Parser *p, TokenType type, const char *msg)
@@ -180,6 +213,7 @@ static Expr *parse_primary(Parser *p)
 		advance(p);
 		e = parse_expr(p);
 		if (!e || !expect(p, TOK_RPAREN, "expected ')'")) {
+			expr_free(e);
 			return NULL;
 		}
 		return e;
@@ -253,7 +287,10 @@ static Expr *parse_unary(Parser *p)
 	if (p->cur.type == TOK_MINUS) {
 		int line = p->cur.line;
 		advance(p);
+		if (!enter(p))
+			return NULL;
 		Expr *r = parse_unary(p);
+		p->depth--;
 		return r ? ast_new_unary(TOK_MINUS, r, line) : NULL;
 	}
 	return parse_postfix(p);
@@ -317,7 +354,10 @@ static Expr *parse_not(Parser *p)
 	if (p->cur.type == TOK_NOT) {
 		int line = p->cur.line;
 		advance(p);
+		if (!enter(p))
+			return NULL;
 		Expr *r = parse_not(p);
+		p->depth--;
 		return r ? ast_new_unary(TOK_NOT, r, line) : NULL;
 	}
 	return parse_comparison(p);
@@ -339,7 +379,7 @@ static Expr *parse_and(Parser *p)
 	return e;
 }
 
-static Expr *parse_expr(Parser *p)
+static Expr *parse_expr_inner(Parser *p)
 {
 	Expr *e = parse_and(p);
 	while (e && p->cur.type == TOK_OR) {
@@ -466,7 +506,7 @@ static Stmt *parse_def(Parser *p)
 	return ast_new_def_stmt(name.start, name.length, params, n, body, line);
 }
 
-static Stmt *parse_stmt(Parser *p)
+static Stmt *parse_stmt_inner(Parser *p)
 {
 	int line = p->cur.line;
 	Expr *e;
@@ -593,7 +633,7 @@ static Stmt *parse_stmt(Parser *p)
 
 Program *parse(Lexer *lx)
 {
-	Parser p = { lx, { TOK_EOF, NULL, 0, 0 }, false, false };
+	Parser p = { lx, { TOK_EOF, NULL, 0, 0 }, false, false, 0 };
 	advance(&p);
 	Program *prog = xmalloc(sizeof *prog);
 	prog->body = NULL;

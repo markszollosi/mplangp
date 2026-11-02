@@ -68,4 +68,12 @@ fi
 check 70 "count(s, sub) needs a non-empty sub." 'import str\nstr.count("a", "")\n'
 check 70 "ord(c) takes a one-byte string." 'import str\nstr.ord("ab")\n'
 check 70 "chr(n) takes an integer from 1 to 255." 'import str\nstr.chr(0)\n'
+deep=$(awk 'BEGIN { printf "x = "; for (i = 0; i < 200; i++) printf "("; printf "1"; for (i = 0; i < 200; i++) printf ")"; print "" }')
+check 65 "line 1: nesting too deep" "$deep\n"
+deep=$(awk 'BEGIN { printf "x = "; for (i = 0; i < 200; i++) printf "["; for (i = 0; i < 200; i++) printf "]"; print "" }')
+check 65 "line 1: nesting too deep" "$deep\n"
+deep=$(awk 'BEGIN { printf "x = "; for (i = 0; i < 200; i++) printf "-"; print "1" }')
+check 65 "line 1: nesting too deep" "$deep\n"
+deep=$(awk 'BEGIN { for (i = 0; i < 130; i++) { for (j = 0; j < i; j++) printf " "; print "if true:" } for (j = 0; j < 130; j++) printf " "; print "x = 1" }')
+check 65 "nesting too deep" "$deep\n"
 exit $fail
