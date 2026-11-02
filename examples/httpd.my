@@ -1,0 +1,72 @@
+import net
+import io
+import str
+import url
+import json
+import time
+
+def reason(code):
+    names = {"200": "OK", "400": "Bad Request", "404": "Not Found", "405": "Method Not Allowed"}
+    return names[text(code)]
+
+def html_escape(s):
+    s = str.replace(s, "&", "&amp;")
+    s = str.replace(s, "<", "&lt;")
+    s = str.replace(s, ">", "&gt;")
+    s = str.replace(s, "\"", "&quot;")
+    return s
+
+def respond(conn, code, ctype, body, extra):
+    head = "HTTP/1.1 " + text(code) + " " + reason(code) + "\r\n"
+    head = head + "Content-Type: " + ctype + "\r\n"
+    head = head + "Content-Length: " + text(len(body)) + "\r\n"
+    head = head + extra
+    head = head + "Connection: close\r\n\r\n"
+    net.send(conn, head + body)
+
+def page(title, inner):
+    return "<!doctype html><html><head><meta charset=\"utf-8\"><title>" + title + "</title></head><body>" + inner + "</body></html>\n"
+
+def handle(conn, method, target):
+    u = url.parse(target)
+    path = u["path"]
+    if method != "GET":
+        respond(conn, 405, "text/plain", "405 Method Not Allowed\n", "Allow: GET\r\n")
+    elif path == "/":
+        body = page("mplangp httpd", "<h1>mplangp httpd</h1><ul><li><a href=\"/hello?name=world\">/hello?name=world</a></li><li><a href=\"/api/time\">/api/time</a></li><li><a href=\"/api/echo?a=1&amp;b=two\">/api/echo?a=1&amp;b=two</a></li></ul>")
+        respond(conn, 200, "text/html; charset=utf-8", body, "")
+    elif path == "/hello":
+        who = get(u["params"], "name", "stranger")
+        respond(conn, 200, "text/html; charset=utf-8", page("Hello", "<p>Hello, " + html_escape(who) + "!</p>"), "")
+    elif path == "/api/time":
+        now = time.now()
+        respond(conn, 200, "application/json", json.dump({"unix": int(now), "iso": time.iso(now)}) + "\n", "")
+    elif path == "/api/echo":
+        respond(conn, 200, "application/json", json.dump({"method": method, "path": path, "params": u["params"]}) + "\n", "")
+    else:
+        respond(conn, 404, "text/plain", "404 Not Found: " + path + "\n", "")
+
+port = 8080
+argv = args()
+if len(argv) > 0:
+    port = int(argv[0])
+
+server = net.listen(port)
+print("listening on http://127.0.0.1:" + text(port) + "/")
+io.flush()
+while True:
+    conn = net.accept(server)
+    line = net.readline(conn)
+    if line != None:
+        while True:
+            h = net.readline(conn)
+            if h == None or h == "":
+                break
+        parts = str.split(line, " ")
+        print(net.peer(conn) + " " + line)
+        io.flush()
+        if len(parts) != 3:
+            respond(conn, 400, "text/plain", "400 Bad Request\n", "")
+        else:
+            handle(conn, parts[0], parts[1])
+    net.close(conn)
