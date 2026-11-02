@@ -129,7 +129,7 @@ print(fib(40))
 102334155
 ```
 
-(Recursion is limited to 63 levels, so this only works for small `n` called from the top. `fib(70)` called cold would overflow while the cache is still empty. Warm the cache with a loop, or avoid recursion entirely:)
+(Recursion is limited to 9999 levels, so very deep chains fail with a stack overflow. A loop avoids recursion entirely:)
 
 ```my
 def fib_loop(n):
