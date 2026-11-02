@@ -66,6 +66,7 @@ test: mplangp modules
 	sh tests/errors.sh || fail=1; \
 	sh tests/docs.sh || fail=1; \
 	sh tests/structure.sh || fail=1; \
+	sh tests/hooks.sh || fail=1; \
 	exit $$fail
 
 clean:
