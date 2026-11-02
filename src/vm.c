@@ -70,13 +70,15 @@ static double as_float(Value v)
 	return v.type == VAL_FLOAT ? v.as.f : (double)as_int(v);
 }
 
+#define STR_MAX (1 << 28)
+
 static bool repeat(Value s, int64_t n, Value *out)
 {
 	size_t len = strlen(s.as.s);
 	if (n < 0) {
 		n = 0;
 	}
-	if (len > 0 && (uint64_t)n > (uint64_t)(INT_MAX - 1) / len) {
+	if (len > 0 && (uint64_t)n > (uint64_t)STR_MAX / len) {
 		return false;
 	}
 	if (len == 0) {
@@ -95,7 +97,7 @@ static bool repeat(Value s, int64_t n, Value *out)
 static bool concat(Value a, Value b, Value *out)
 {
 	size_t la = strlen(a.as.s), lb = strlen(b.as.s);
-	if (la + lb >= INT_MAX) {
+	if (la + lb > STR_MAX) {
 		return false;
 	}
 	char *buf = xmalloc(la + lb + 1);

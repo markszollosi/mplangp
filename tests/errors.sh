@@ -68,6 +68,8 @@ fi
 check 70 "count(s, sub) needs a non-empty sub." 'import str\nstr.count("a", "")\n'
 check 70 "ord(c) takes a one-byte string." 'import str\nstr.ord("ab")\n'
 check 70 "chr(n) takes an integer from 1 to 255." 'import str\nstr.chr(0)\n'
+check 70 "String too long." 's = "ab" * 1000\nt = s * 1000000\n'
+check 70 "range is too large." 'range(-9000000000000000000, 9000000000000000000)\n'
 # unit2: loader robustness
 if [ "$("$bin" /nonexistent/x.my 2>&1)" = "mplangp: cannot open '/nonexistent/x.my'" ]; then
 	echo "PASS missing script"

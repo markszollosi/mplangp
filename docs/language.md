@@ -127,7 +127,7 @@ Note `not` binds looser than comparisons (`not a == b` is `not (a == b)`) and un
 - `int op int` stays `int` for `+ - * %`; `/` **always returns a float** (`10 / 5` is `2.0`). There is no `//` and no `**`: use `int(a / b)` or `math.floor`, and `math.pow`.
 - `%` follows the sign of the divisor like Python (`-7 % 3` is `2`). Division or modulo by zero is the runtime error `Division by zero.`
 - Mixing `int` and `float` gives a `float`. `bool` counts as `0`/`1`.
-- `str + str` concatenates; `str * int` repeats (a negative count gives `""`). `list + list` makes a new concatenated list. Anything else, such as `"a" + 1`, is `Unsupported operand types.`: convert with `text(x)`.
+- `str + str` concatenates; `str * int` repeats (a negative count gives `""`); a result over 268,435,456 bytes is the runtime error `String too long.` `list + list` makes a new concatenated list. Anything else, such as `"a" + 1`, is `Unsupported operand types.`: convert with `text(x)`.
 
 ```my
 print(7 / 2)
