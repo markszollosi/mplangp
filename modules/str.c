@@ -217,7 +217,36 @@ static bool s_pad_right(int argc, Value *argv, Value *ret)
 	return pad(argc, argv, ret, false, "pad_right");
 }
 
+static bool s_count(int argc, Value *argv, Value *ret)
+{
+	MP_CHECK(argc == 2 && mp_is_str(argv[0]) && mp_is_str(argv[1]), "count(s, sub) takes two strings.");
+	size_t m = strlen(argv[1].as.s);
+	MP_CHECK(m > 0, "count(s, sub) needs a non-empty sub.");
+	int64_t n = 0;
+	for (const char *p = argv[0].as.s; (p = strstr(p, argv[1].as.s)); p += m)
+		n++;
+	*ret = mp_int(n);
+	return true;
+}
+
+static bool s_ord(int argc, Value *argv, Value *ret)
+{
+	MP_CHECK(argc == 1 && mp_is_str(argv[0]) && strlen(argv[0].as.s) == 1, "ord(c) takes a one-byte string.");
+	*ret = mp_int((unsigned char)argv[0].as.s[0]);
+	return true;
+}
+
+static bool s_chr(int argc, Value *argv, Value *ret)
+{
+	MP_CHECK(argc == 1 && mp_is_int(argv[0]) && mp_to_int(argv[0]) >= 1 && mp_to_int(argv[0]) <= 255,
+		"chr(n) takes an integer from 1 to 255.");
+	char c = (char)mp_to_int(argv[0]);
+	*ret = mp_string(&c, 1);
+	return true;
+}
+
 MP_MODULE({"len", s_len}, {"upper", s_upper}, {"lower", s_lower}, {"trim", s_trim},
 	{"split", s_split}, {"lines", s_lines}, {"join", s_join}, {"replace", s_replace},
-	{"find", s_find}, {"starts", s_starts}, {"ends", s_ends},
-	{"fixed", s_fixed}, {"pad_left", s_pad_left}, {"pad_right", s_pad_right});
+	{"find", s_find}, {"starts", s_starts}, {"ends", s_ends}, {"count", s_count},
+	{"fixed", s_fixed}, {"pad_left", s_pad_left}, {"pad_right", s_pad_right},
+	{"ord", s_ord}, {"chr", s_chr});

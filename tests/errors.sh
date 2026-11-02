@@ -65,4 +65,7 @@ else
 	echo "FAIL wide constants (600 names and literals)"
 	fail=1
 fi
+check 70 "count(s, sub) needs a non-empty sub." 'import str\nstr.count("a", "")\n'
+check 70 "ord(c) takes a one-byte string." 'import str\nstr.ord("ab")\n'
+check 70 "chr(n) takes an integer from 1 to 255." 'import str\nstr.chr(0)\n'
 exit $fail
