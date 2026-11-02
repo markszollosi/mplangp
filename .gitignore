@@ -3,4 +3,5 @@ modules/*.so
 mplangp
 tests/test_*
 !tests/test_*.c
-.claude/
+.claude/worktrees/
+.claude/settings.local.json
