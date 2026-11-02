@@ -20,6 +20,9 @@ Also useful from the language itself: `+` (concatenate), `*` (repeat), `in` (sub
 | `fixed(x, decimals)` | str | number as text with exactly `decimals` digits after the point (0 to 15), rounded: `fixed(2.5, 2)` is `"2.50"`, `fixed(1234.5678, 1)` is `"1234.6"`. This is how you print money and averages |
 | `pad_left(s, width, fill?)` | str | pad on the left to `width` bytes (right-align); `fill` is a one-character string, default space; longer strings are returned unchanged |
 | `pad_right(s, width, fill?)` | str | pad on the right (left-align) |
+| `count(s, sub)` | int | number of non-overlapping occurrences; `sub` must be non-empty |
+| `ord(c)` | int | byte value (0-255) of a one-byte string |
+| `chr(n)` | str | one-byte string for `n` in 1-255 (values above 127 are not valid UTF-8 on their own) |
 
 ```my
 import str
@@ -35,6 +38,9 @@ print(str.find("hello", "ll"))
 print(str.find("hello", "zz"))
 print(str.starts("hello", "he"))
 print(str.ends("hello", "lo"))
+print(str.count("banana", "an"))
+print(str.ord("A"))
+print(str.chr(98))
 ```
 
 ```output
@@ -49,6 +55,9 @@ a::b::c
 -1
 True
 True
+2
+65
+b
 ```
 
 Number formatting and aligned columns (`pad_*` need strings: convert numbers with `text()` or `fixed`):
