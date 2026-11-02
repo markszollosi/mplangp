@@ -16,6 +16,10 @@
       {
         "matcher": "Edit|Write",
         "hooks": [{ "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect.sh" }]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [{ "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pr-gate.sh", "timeout": 600 }]
       }
     ],
     "PostToolUse": [
