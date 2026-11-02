@@ -521,9 +521,13 @@ stdout is buffered: when both streams go to the same place, stderr text may appe
 | elements per list/map literal | 255 (use `push` for more) | `list literal too long` |
 | syntax nesting (brackets, parentheses, blocks, chained `-`/`not`) | 128 levels | `nesting too deep` |
 | nested loops | 32 (16 of them `for`) | `loops nested too deeply` |
-| code size of one loop body or `if` branch | about 64 KB of bytecode | `jump too large` |
+| code size of one loop body or `if` branch | about 64 KB of bytecode | `jump too large` or `loop body too large` |
+| `break` statements in one loop | unlimited | none |
+| length of a number literal | 63 characters | `number too long` |
 | `range` size | 10,000,000 | `range is too large.` |
 | module imports | 64 | `No module named` |
+
+Compile-time limits are reported before the program runs, as `line N: message` on stderr with exit code 65.
 
 The interpreter is a simple bytecode VM: expect roughly 10-50 million simple operations per second. Push heavy work into modules (`re`, `json`, `db`, `proc`).
 
