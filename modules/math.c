@@ -34,7 +34,10 @@ static bool m_abs(int argc, Value *argv, Value *ret)
 	if (argv[0].type == VAL_FLOAT)
 		*ret = mp_float(fabs(argv[0].as.f));
 	else
-		*ret = mp_int(mp_to_int(argv[0]) < 0 ? -mp_to_int(argv[0]) : mp_to_int(argv[0]));
+	{
+		long long v = mp_to_int(argv[0]);
+		*ret = mp_int(v < 0 ? (long long)(0 - (unsigned long long)v) : v);
+	}
 	return true;
 }
 

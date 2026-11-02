@@ -24,8 +24,9 @@ check 70 "No module named 'nope'." 'import nope\n'
 check 70 "has no attribute 'nothing'" 'import math\nmath.nothing\n'
 check 70 "sqrt of a negative number." 'import math\nmath.sqrt(-1)\n'
 check 70 "Can only call functions." 'x = 5\nx()\n'
-check 70 "Stack overflow." 'def r(n):\n    return r(n + 1)\nr(0)\n'
+check 70 "Stack overflow: calls nested too deeply" 'def r(n):\n    return r(n + 1)\nr(0)\n'
 check 65 "nested def is not supported" 'def f():\n    def g():\n        return 1\n'
+check 65 "integer literal too large" 'print(9223372036854775808)\n'
 check 65 "'return' outside function" 'return 1\n'
 check 65 "duplicate parameter" 'def f(a, a):\n    return a\n'
 check 65 "'break' outside loop" 'break\n'
@@ -72,4 +73,56 @@ long=$(awk 'BEGIN { printf "x = 1"; for (i = 0; i < 200000; i++) printf "+1"; pr
 check 65 "expression too long" "$long\\n"
 long=$(awk 'BEGIN { printf "x = [1]"; for (i = 0; i < 200000; i++) printf "[0]"; printf "\\n" }')
 check 65 "expression too long" "$long\\n"
+check 70 "line 2: Stack overflow: calls nested too deeply (limit 9999)." 'def r(n):\n    return r(n + 1)\nr(0)\n'
+check 70 "Key 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' not found." 'm = {}\nm["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]\n'
+gen() {
+	awk "BEGIN { $1 }" > "$src"
+	"$bin" "$src" > /dev/null 2> "$err"
+	code=$?
+	if [ "$code" = "$2" ] && { [ -z "$3" ] || grep -qF "$3" "$err"; }; then
+		echo "PASS limit: $3"
+	else
+		echo "FAIL limit: $3 (exit $code)"
+		fail=1
+	fi
+}
+gen 'for (i = 0; i < 65537; i++) printf "x = %d\n", i' 65 "line 65536: too many constants"
+gen 'print "def f():"; print "    if 1:"; print "        x = 1"; for (i = 0; i < 25000; i++) print "        print(1 + 2 + 3)"; print "    else:"; print "        x = 2"' 65 "jump too large"
+gen 'print "while True:"; for (i = 0; i < 25000; i++) print "    print(1 + 2 + 3)"' 65 "loop body too large"
+gen 'printf "f("; for (i = 0; i < 256; i++) printf "%s%d", i ? "," : "", i; print ")"' 65 "line 1: too many arguments"
+gen 'printf "x = ["; for (i = 0; i < 256; i++) printf "%s%d", i ? "," : "", i; print "]"' 65 "line 1: list literal too long"
+gen 'printf "x = {"; for (i = 0; i < 256; i++) printf "%s%d: 1", i ? "," : "", i; print "}"' 65 "line 1: map literal too long"
+gen 'print "def f():"; for (i = 0; i < 256; i++) printf "    v%d = 1\n", i' 65 "too many local variables"
+gen 'for (i = 0; i < 17; i++) { for (j = 0; j < i; j++) printf "    "; print "for x in [1]:" } for (j = 0; j < 17; j++) printf "    "; print "pass"' 65 "for loops nested too deeply"
+gen 'for (i = 0; i < 33; i++) { for (j = 0; j < i; j++) printf "    "; print "while True:" } for (j = 0; j < 33; j++) printf "    "; print "break"' 65 "loops nested too deeply"
+gen 'print "while True:"; for (i = 0; i < 1000; i++) print "    if 1:\n        break"; print "    break"' 0 ""
+gen 'printf "x = "; for (i = 0; i < 100; i++) printf "1"; print ""' 65 "number too long"
+deep=$(awk 'BEGIN { printf "x = "; for (i = 0; i < 200; i++) printf "("; printf "1"; for (i = 0; i < 200; i++) printf ")"; print "" }')
+check 65 "line 1: nesting too deep" "$deep\n"
+deep=$(awk 'BEGIN { printf "x = "; for (i = 0; i < 200; i++) printf "["; for (i = 0; i < 200; i++) printf "]"; print "" }')
+check 65 "line 1: nesting too deep" "$deep\n"
+deep=$(awk 'BEGIN { printf "x = "; for (i = 0; i < 200; i++) printf "-"; print "1" }')
+check 65 "line 1: nesting too deep" "$deep\n"
+deep=$(awk 'BEGIN { for (i = 0; i < 130; i++) { for (j = 0; j < i; j++) printf " "; print "if true:" } for (j = 0; j < 130; j++) printf " "; print "x = 1" }')
+check 65 "nesting too deep" "$deep\n"
+check 70 "Integer overflow." 'print(9223372036854775807 + 1)\n'
+check 70 "Integer overflow." 'print(-9223372036854775807 - 2)\n'
+check 70 "Integer overflow." 'print(4294967296 * 4294967296)\n'
+check 70 "Integer overflow." 'x = -9223372036854775807 - 1\nprint(-x)\n'
+check 70 "String too long." 's = "ab" * 1000\nt = s * 1000000\n'
+check 70 "range is too large." 'range(-9000000000000000000, 9000000000000000000)\n'
+# unit2: loader robustness
+if [ "$("$bin" /nonexistent/x.my 2>&1)" = "mplangp: cannot open '/nonexistent/x.my'" ]; then
+	echo "PASS missing script"
+else
+	echo "FAIL missing script"
+	fail=1
+fi
+if [ "$("$bin" /tmp 2>&1)" = "mplangp: cannot read '/tmp'" ]; then
+	echo "PASS directory as script"
+else
+	echo "FAIL directory as script"
+	fail=1
+fi
+check 70 "No module named" 'import nosuchmod\n'
 exit $fail

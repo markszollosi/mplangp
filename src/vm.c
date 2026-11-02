@@ -11,8 +11,8 @@
 #include "builtin.h"
 #include "util.h"
 
-#define STACK_MAX 256
-#define FRAMES_MAX 64
+#define STACK_MAX 65536
+#define FRAMES_MAX 10000
 
 typedef struct {
 	Function *fn;
@@ -70,13 +70,15 @@ static double as_float(Value v)
 	return v.type == VAL_FLOAT ? v.as.f : (double)as_int(v);
 }
 
+#define STR_MAX (1 << 28)
+
 static bool repeat(Value s, int64_t n, Value *out)
 {
 	size_t len = strlen(s.as.s);
 	if (n < 0) {
 		n = 0;
 	}
-	if (len > 0 && (uint64_t)n > (uint64_t)(INT_MAX - 1) / len) {
+	if (len > 0 && (uint64_t)n > (uint64_t)STR_MAX / len) {
 		return false;
 	}
 	if (len == 0) {
@@ -95,7 +97,7 @@ static bool repeat(Value s, int64_t n, Value *out)
 static bool concat(Value a, Value b, Value *out)
 {
 	size_t la = strlen(a.as.s), lb = strlen(b.as.s);
-	if (la + lb >= INT_MAX) {
+	if (la + lb > STR_MAX) {
 		return false;
 	}
 	char *buf = xmalloc(la + lb + 1);
@@ -163,9 +165,21 @@ static const char *arith(OpCode op, Value a, Value b, Value *out)
 	if (is_intlike(a) && is_intlike(b) && op != OP_DIV) {
 		int64_t x = as_int(a), y = as_int(b), r;
 		switch (op) {
-		case OP_ADD: r = (int64_t)((uint64_t)x + (uint64_t)y); break;
-		case OP_SUB: r = (int64_t)((uint64_t)x - (uint64_t)y); break;
-		case OP_MUL: r = (int64_t)((uint64_t)x * (uint64_t)y); break;
+		case OP_ADD:
+			if (__builtin_add_overflow(x, y, &r)) {
+				return "Integer overflow.";
+			}
+			break;
+		case OP_SUB:
+			if (__builtin_sub_overflow(x, y, &r)) {
+				return "Integer overflow.";
+			}
+			break;
+		case OP_MUL:
+			if (__builtin_mul_overflow(x, y, &r)) {
+				return "Integer overflow.";
+			}
+			break;
 		default:
 			if (y == 0) {
 				return "Division by zero.";
@@ -208,7 +222,18 @@ static const char *arith(OpCode op, Value a, Value b, Value *out)
 	return NULL;
 }
 
-static char errbuf[320];
+static char *errbuf;
+
+static const char *errf(const char *fmt, const char *a, const char *b)
+{
+	int n = snprintf(NULL, 0, fmt, a, b);
+	char *p = n < 0 ? NULL : realloc(errbuf, (size_t)n + 1);
+	if (!p)
+		return "Out of memory.";
+	errbuf = p;
+	snprintf(errbuf, (size_t)n + 1, fmt, a, b);
+	return errbuf;
+}
 
 static const char *index_get(Value obj, Value idx, Value *out)
 {
@@ -217,8 +242,7 @@ static const char *index_get(Value obj, Value idx, Value *out)
 			return "Map keys must be strings.";
 		Value *v = mp_get(obj, idx.as.s);
 		if (!v) {
-			snprintf(errbuf, sizeof errbuf, "Key '%.200s' not found.", idx.as.s);
-			return errbuf;
+			return errf("Key '%s' not found.", idx.as.s, "");
 		}
 		*out = value_copy(*v);
 		return NULL;
@@ -327,7 +351,7 @@ InterpretResult vm_run(Chunk *main_chunk)
 			Value c = chunk->constants.values[idx];
 			if (op == OP_CONST) {
 				if (sp >= STACK_MAX) {
-					return error(chunk, at, "%s", "Stack overflow.");
+					return error(chunk, at, "%s", "Stack overflow: value stack full (65536 slots).");
 				}
 				stack[sp++] = value_copy(c);
 				break;
@@ -342,7 +366,7 @@ InterpretResult vm_run(Chunk *main_chunk)
 					return error(chunk, at, "Undefined variable '%s'.", c.as.s);
 				}
 				if (sp >= STACK_MAX) {
-					return error(chunk, at, "%s", "Stack overflow.");
+					return error(chunk, at, "%s", "Stack overflow: value stack full (65536 slots).");
 				}
 				stack[sp++] = value_copy(v);
 			} else {
@@ -380,8 +404,14 @@ InterpretResult vm_run(Chunk *main_chunk)
 			if (!is_num(stack[sp - 1])) {
 				return error(chunk, at, "%s", "Unsupported operand types.");
 			}
-			stack[sp - 1] = stack[sp - 1].type == VAL_FLOAT ? value_float(-stack[sp - 1].as.f)
-				: value_int((int64_t)(0 - (uint64_t)as_int(stack[sp - 1])));
+			if (stack[sp - 1].type == VAL_FLOAT) {
+				stack[sp - 1] = value_float(-stack[sp - 1].as.f);
+				break;
+			}
+			if (as_int(stack[sp - 1]) == INT64_MIN) {
+				return error(chunk, at, "%s", "Integer overflow.");
+			}
+			stack[sp - 1] = value_int(-as_int(stack[sp - 1]));
 			break;
 		case OP_NOT: {
 			if (sp < 1) {
@@ -562,7 +592,7 @@ InterpretResult vm_run(Chunk *main_chunk)
 			}
 			if (op == OP_GET_LOCAL) {
 				if (sp >= STACK_MAX) {
-					return error(chunk, at, "%s", "Stack overflow.");
+					return error(chunk, at, "%s", "Stack overflow: value stack full (65536 slots).");
 				}
 				stack[sp] = value_copy(stack[f->base + slot]);
 				sp++;
@@ -587,13 +617,10 @@ InterpretResult vm_run(Chunk *main_chunk)
 			if (callee.type == VAL_NATIVE) {
 				Value ret = value_none();
 				if (!callee.as.native->fn(argc, &stack[sp - argc], &ret)) {
-					char msg[256] = "Native function failed.";
-					if (ret.type == VAL_STRING) {
-						strncpy(msg, ret.as.s, sizeof msg - 1);
-						msg[sizeof msg - 1] = '\0';
-					}
+					InterpretResult res = error(chunk, at, "%s",
+					    ret.type == VAL_STRING ? ret.as.s : "Native function failed.");
 					value_free(ret);
-					return error(chunk, at, "%s", msg);
+					return res;
 				}
 				while (argc-- > 0) {
 					value_free(stack[--sp]);
@@ -610,8 +637,11 @@ InterpretResult vm_run(Chunk *main_chunk)
 				snprintf(msg, sizeof msg, "Expected %d arguments but got %d.", fn->arity, argc);
 				return error(chunk, at, "%s", msg);
 			}
-			if (nframes >= FRAMES_MAX || sp + fn->nlocals - argc > STACK_MAX) {
-				return error(chunk, at, "%s", "Stack overflow.");
+			if (nframes >= FRAMES_MAX) {
+				return error(chunk, at, "%s", "Stack overflow: calls nested too deeply (limit 9999).");
+			}
+			if (sp + fn->nlocals - argc > STACK_MAX) {
+				return error(chunk, at, "%s", "Stack overflow: value stack full (65536 slots).");
 			}
 			f->ip = ip;
 			Frame *nf = &frames[nframes++];
@@ -657,7 +687,7 @@ InterpretResult vm_run(Chunk *main_chunk)
 					return error(chunk, at, "%s", msg);
 				}
 				if (sp >= STACK_MAX) {
-					return error(chunk, at, "%s", "Stack overflow.");
+					return error(chunk, at, "%s", "Stack overflow: value stack full (65536 slots).");
 				}
 				stack[sp].type = VAL_MODULE;
 				stack[sp++].as.module = m;
@@ -670,9 +700,8 @@ InterpretResult vm_run(Chunk *main_chunk)
 				}
 				Value member;
 				if (!module_lookup(stack[sp - 1].as.module, name, &member)) {
-					snprintf(msg, sizeof msg, "Module '%s' has no attribute '%s'.",
-					    stack[sp - 1].as.module->name, name);
-					return error(chunk, at, "%s", msg);
+					return error(chunk, at, "%s", errf("Module '%s' has no attribute '%s'.",
+					    stack[sp - 1].as.module->name, name));
 				}
 				stack[sp - 1] = member;
 			}
