@@ -33,7 +33,7 @@
     ],
     "Stop": [
       {
-        "hooks": [{ "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/test-gate.sh", "timeout": 300 }]
+        "hooks": [{ "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/test-gate.sh", "timeout": 300 }, { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/sync-gate.sh", "timeout": 30 }]
       }
     ]
   }
