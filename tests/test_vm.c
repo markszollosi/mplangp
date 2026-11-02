@@ -142,6 +142,7 @@ int main(void)
 	binary("min mul -1", value_int(INT64_MIN), value_int(-1), OP_MUL, INTERPRET_RUNTIME_ERROR, "");
 	binary("min mod -1", value_int(INT64_MIN), value_int(-1), OP_MOD, INTERPRET_OK, "0\n");
 	binary("max add 0", value_int(INT64_MAX), value_int(0), OP_ADD, INTERPRET_OK, "9223372036854775807\n");
+	binary("repeat over cap", value_string("ab", 2), value_int(134217729), OP_MUL, INTERPRET_RUNTIME_ERROR, "");
 	binary("div0", value_int(1), value_int(0), OP_DIV, INTERPRET_RUNTIME_ERROR, "");
 	binary("mod0", value_int(1), value_int(0), OP_MOD, INTERPRET_RUNTIME_ERROR, "");
 	binary("fdiv0", value_float(1.0), value_float(0.0), OP_DIV, INTERPRET_RUNTIME_ERROR, "");

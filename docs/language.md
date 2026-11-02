@@ -128,7 +128,7 @@ Note `not` binds looser than comparisons (`not a == b` is `not (a == b)`) and un
 - `%` follows the sign of the divisor like Python (`-7 % 3` is `2`). Division or modulo by zero is the runtime error `Division by zero.`
 - `int` overflow in `+ - *` or unary `-` (for example `9223372036854775807 + 1`) is the runtime error `Integer overflow.`;. `%` by `-1` is `0`.
 - Mixing `int` and `float` gives a `float`. `bool` counts as `0`/`1`.
-- `str + str` concatenates; `str * int` repeats (a negative count gives `""`). `list + list` makes a new concatenated list. Anything else, such as `"a" + 1`, is `Unsupported operand types.`: convert with `text(x)`.
+- `str + str` concatenates; `str * int` repeats (a negative count gives `""`); a result over 268,435,456 bytes is the runtime error `String too long.` `list + list` makes a new concatenated list. Anything else, such as `"a" + 1`, is `Unsupported operand types.`: convert with `text(x)`.
 
 ```my
 print(7 / 2)
