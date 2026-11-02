@@ -12,7 +12,9 @@ if [ -x "$root/tools/testcache.sh" ]; then
 	k=$(cd "$root" && tools/testcache.sh key 2>/dev/null)
 	stamp=${TMPDIR:-/tmp}/mplangp-build-$(printf '%s' "$root" | cksum | cut -d' ' -f1)
 	now=$(date +%s)
-	read -r pk pt <"$stamp" 2>/dev/null
+	pk=
+	pt=0
+	[ -f "$stamp" ] && read -r pk pt <"$stamp"
 	[ -n "$k" ] && [ "$k" = "$pk" ] && [ $((now - ${pt:-0})) -le 2 ] && exit 0
 fi
 out=$(cd "$root" && make 2>&1)
