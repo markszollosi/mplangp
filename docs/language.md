@@ -138,7 +138,6 @@ print(2 * 3.0)
 print("ab" * 3 + "!")
 print([1] + [2, 3])
 print("n=" + text(5))
-print(9223372036854775807 + 1)
 ```
 
 ```output
@@ -149,7 +148,14 @@ print(9223372036854775807 + 1)
 ababab!
 [1, 2, 3]
 n=5
--9223372036854775808
+```
+
+```my-error
+print(9223372036854775807 + 1)
+```
+
+```output
+Integer overflow.
 ```
 
 ### Membership: `in`
