@@ -6,18 +6,17 @@
 #include "module.h"
 #include "util.h"
 
-#define PATHS_MAX 16
-#define MODULES_MAX 64
-
-static char *paths[PATHS_MAX];
-static int npaths;
-static Module *loaded[MODULES_MAX];
-static int nloaded;
+static char **paths;
+static int npaths, cappaths;
+static Module **loaded;
+static int nloaded, caploaded;
 
 void module_add_path(const char *dir)
 {
-	if (npaths >= PATHS_MAX)
-		return;
+	if (npaths >= cappaths) {
+		cappaths = cappaths ? cappaths * 2 : 8;
+		paths = xrealloc(paths, sizeof *paths * (size_t)cappaths);
+	}
 	size_t n = strlen(dir) + 1;
 	paths[npaths] = xmalloc(n);
 	memcpy(paths[npaths++], dir, n);
@@ -61,20 +60,29 @@ Module *module_load(const char *name, char *err, int errlen)
 	for (int i = 0; i < nloaded; i++)
 		if (strcmp(loaded[i]->name, name) == 0)
 			return loaded[i];
-	if (!valid_name(name) || nloaded >= MODULES_MAX) {
+	if (!valid_name(name)) {
 		snprintf(err, errlen, "No module named '%s'.", name);
 		return NULL;
 	}
 	for (int i = 0; i < npaths; i++) {
-		char path[1024];
-		snprintf(path, sizeof path, "%s/%s.so", paths[i], name);
+		size_t n = strlen(paths[i]) + strlen(name) + 5;
+		char *path = xmalloc(n);
+		snprintf(path, n, "%s/%s.so", paths[i], name);
 		FILE *f = fopen(path, "rb");
-		if (!f)
+		if (!f) {
+			free(path);
 			continue;
+		}
 		fclose(f);
 		Module *m = open_at(path, name, err, errlen);
-		if (m)
+		free(path);
+		if (m) {
+			if (nloaded >= caploaded) {
+				caploaded = caploaded ? caploaded * 2 : 8;
+				loaded = xrealloc(loaded, sizeof *loaded * (size_t)caploaded);
+			}
 			loaded[nloaded++] = m;
+		}
 		return m;
 	}
 	snprintf(err, errlen, "No module named '%s'.", name);
@@ -100,8 +108,12 @@ void module_free_all(void)
 		free(loaded[i]->name);
 		free(loaded[i]);
 	}
-	nloaded = 0;
+	free(loaded);
+	loaded = NULL;
+	nloaded = caploaded = 0;
 	for (int i = 0; i < npaths; i++)
 		free(paths[i]);
-	npaths = 0;
+	free(paths);
+	paths = NULL;
+	npaths = cappaths = 0;
 }

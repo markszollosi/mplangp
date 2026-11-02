@@ -128,8 +128,32 @@ static void test_errors(void)
 	}
 }
 
+static void test_depth(void)
+{
+	enum { N = 300 };
+	char *src = malloc(2 * N + 16);
+	int n = 0;
+	src[n++] = 'x';
+	src[n++] = '=';
+	for (int i = 0; i < N; i++)
+		src[n++] = '(';
+	src[n++] = '1';
+	for (int i = 0; i < N; i++)
+		src[n++] = ')';
+	src[n++] = '\n';
+	src[n] = '\0';
+	CHECK(parse_src(src) == NULL);
+	free(src);
+	Program *p = parse_src("x = ((((1))))\n");
+	CHECK(p != NULL);
+	program_free(p);
+	CHECK(parse_src("f(1, [2, {3: (4,\n") == NULL);
+	CHECK(parse_src("def f(a, b:\n") == NULL);
+}
+
 int main(void)
 {
+	test_depth();
 	test_precedence();
 	test_literals_assign();
 	test_control();
