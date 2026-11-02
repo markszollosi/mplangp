@@ -165,9 +165,21 @@ static const char *arith(OpCode op, Value a, Value b, Value *out)
 	if (is_intlike(a) && is_intlike(b) && op != OP_DIV) {
 		int64_t x = as_int(a), y = as_int(b), r;
 		switch (op) {
-		case OP_ADD: r = (int64_t)((uint64_t)x + (uint64_t)y); break;
-		case OP_SUB: r = (int64_t)((uint64_t)x - (uint64_t)y); break;
-		case OP_MUL: r = (int64_t)((uint64_t)x * (uint64_t)y); break;
+		case OP_ADD:
+			if (__builtin_add_overflow(x, y, &r)) {
+				return "Integer overflow.";
+			}
+			break;
+		case OP_SUB:
+			if (__builtin_sub_overflow(x, y, &r)) {
+				return "Integer overflow.";
+			}
+			break;
+		case OP_MUL:
+			if (__builtin_mul_overflow(x, y, &r)) {
+				return "Integer overflow.";
+			}
+			break;
 		default:
 			if (y == 0) {
 				return "Division by zero.";
@@ -382,8 +394,14 @@ InterpretResult vm_run(Chunk *main_chunk)
 			if (!is_num(stack[sp - 1])) {
 				return error(chunk, at, "%s", "Unsupported operand types.");
 			}
-			stack[sp - 1] = stack[sp - 1].type == VAL_FLOAT ? value_float(-stack[sp - 1].as.f)
-				: value_int((int64_t)(0 - (uint64_t)as_int(stack[sp - 1])));
+			if (stack[sp - 1].type == VAL_FLOAT) {
+				stack[sp - 1] = value_float(-stack[sp - 1].as.f);
+				break;
+			}
+			if (as_int(stack[sp - 1]) == INT64_MIN) {
+				return error(chunk, at, "%s", "Integer overflow.");
+			}
+			stack[sp - 1] = value_int(-as_int(stack[sp - 1]));
 			break;
 		case OP_NOT: {
 			if (sp < 1) {
