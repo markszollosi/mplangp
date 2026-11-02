@@ -69,6 +69,10 @@ fi
 check 70 "count(s, sub) needs a non-empty sub." 'import str\nstr.count("a", "")\n'
 check 70 "ord(c) takes a one-byte string." 'import str\nstr.ord("ab")\n'
 check 70 "chr(n) takes an integer from 1 to 255." 'import str\nstr.chr(0)\n'
+long=$(awk 'BEGIN { printf "x = 1"; for (i = 0; i < 200000; i++) printf "+1"; printf "\\n" }')
+check 65 "expression too long" "$long\\n"
+long=$(awk 'BEGIN { printf "x = [1]"; for (i = 0; i < 200000; i++) printf "[0]"; printf "\\n" }')
+check 65 "expression too long" "$long\\n"
 check 70 "line 2: Stack overflow: calls nested too deeply (limit 9999)." 'def r(n):\n    return r(n + 1)\nr(0)\n'
 check 70 "Key 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' not found." 'm = {}\nm["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]\n'
 gen() {

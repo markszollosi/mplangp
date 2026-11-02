@@ -223,10 +223,18 @@ static Expr *parse_primary(Parser *p)
 	}
 }
 
+#define MAX_CHAIN 1000
+
 static Expr *parse_postfix(Parser *p)
 {
 	Expr *e = parse_primary(p);
+	int len = 0;
 	while (e && (p->cur.type == TOK_LPAREN || p->cur.type == TOK_DOT || p->cur.type == TOK_LBRACKET)) {
+		if (++len > MAX_CHAIN) {
+			expr_free(e);
+			error_at(p, "expression too long");
+			return NULL;
+		}
 		int line = p->cur.line;
 		if (p->cur.type == TOK_LBRACKET) {
 			advance(p);
@@ -298,8 +306,14 @@ static Expr *parse_unary(Parser *p)
 
 static Expr *parse_factor(Parser *p)
 {
+	int len = 0;
 	Expr *e = parse_unary(p);
 	while (e && (p->cur.type == TOK_STAR || p->cur.type == TOK_SLASH || p->cur.type == TOK_PERCENT)) {
+		if (++len > MAX_CHAIN) {
+			expr_free(e);
+			error_at(p, "expression too long");
+			return NULL;
+		}
 		Token op = p->cur;
 		advance(p);
 		Expr *r = parse_unary(p);
@@ -314,8 +328,14 @@ static Expr *parse_factor(Parser *p)
 
 static Expr *parse_term(Parser *p)
 {
+	int len = 0;
 	Expr *e = parse_factor(p);
 	while (e && (p->cur.type == TOK_PLUS || p->cur.type == TOK_MINUS)) {
+		if (++len > MAX_CHAIN) {
+			expr_free(e);
+			error_at(p, "expression too long");
+			return NULL;
+		}
 		Token op = p->cur;
 		advance(p);
 		Expr *r = parse_factor(p);
@@ -335,8 +355,14 @@ static bool is_comparison(TokenType t)
 
 static Expr *parse_comparison(Parser *p)
 {
+	int len = 0;
 	Expr *e = parse_term(p);
 	while (e && is_comparison(p->cur.type)) {
+		if (++len > MAX_CHAIN) {
+			expr_free(e);
+			error_at(p, "expression too long");
+			return NULL;
+		}
 		Token op = p->cur;
 		advance(p);
 		Expr *r = parse_term(p);
@@ -365,8 +391,14 @@ static Expr *parse_not(Parser *p)
 
 static Expr *parse_and(Parser *p)
 {
+	int len = 0;
 	Expr *e = parse_not(p);
 	while (e && p->cur.type == TOK_AND) {
+		if (++len > MAX_CHAIN) {
+			expr_free(e);
+			error_at(p, "expression too long");
+			return NULL;
+		}
 		int line = p->cur.line;
 		advance(p);
 		Expr *r = parse_not(p);
@@ -381,8 +413,14 @@ static Expr *parse_and(Parser *p)
 
 static Expr *parse_expr_inner(Parser *p)
 {
+	int len = 0;
 	Expr *e = parse_and(p);
 	while (e && p->cur.type == TOK_OR) {
+		if (++len > MAX_CHAIN) {
+			expr_free(e);
+			error_at(p, "expression too long");
+			return NULL;
+		}
 		int line = p->cur.line;
 		advance(p);
 		Expr *r = parse_and(p);
