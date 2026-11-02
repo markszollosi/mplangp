@@ -70,4 +70,18 @@ check 70 "ord(c) takes a one-byte string." 'import str\nstr.ord("ab")\n'
 check 70 "chr(n) takes an integer from 1 to 255." 'import str\nstr.chr(0)\n'
 check 70 "String too long." 's = "ab" * 1000\nt = s * 1000000\n'
 check 70 "range is too large." 'range(-9000000000000000000, 9000000000000000000)\n'
+# unit2: loader robustness
+if [ "$("$bin" /nonexistent/x.my 2>&1)" = "mplangp: cannot open '/nonexistent/x.my'" ]; then
+	echo "PASS missing script"
+else
+	echo "FAIL missing script"
+	fail=1
+fi
+if [ "$("$bin" /tmp 2>&1)" = "mplangp: cannot read '/tmp'" ]; then
+	echo "PASS directory as script"
+else
+	echo "FAIL directory as script"
+	fail=1
+fi
+check 70 "No module named" 'import nosuchmod\n'
 exit $fail
