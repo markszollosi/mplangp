@@ -21,6 +21,7 @@ mapped()
 	return 1
 }
 for f in src/*.c src/*.h modules/*.c tests/*.c tests/*.sh; do
+	[ -e "$f" ] || continue
 	mapped "$f" || bad "$f missing from $map"
 done
 [ "$1" = map ] && exit $fail
