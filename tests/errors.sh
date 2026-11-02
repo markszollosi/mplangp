@@ -68,4 +68,18 @@ fi
 check 70 "count(s, sub) needs a non-empty sub." 'import str\nstr.count("a", "")\n'
 check 70 "ord(c) takes a one-byte string." 'import str\nstr.ord("ab")\n'
 check 70 "chr(n) takes an integer from 1 to 255." 'import str\nstr.chr(0)\n'
+# unit2: loader robustness
+if [ "$("$bin" /nonexistent/x.my 2>&1)" = "mplangp: cannot open '/nonexistent/x.my'" ]; then
+	echo "PASS missing script"
+else
+	echo "FAIL missing script"
+	fail=1
+fi
+if [ "$("$bin" /tmp 2>&1)" = "mplangp: cannot read '/tmp'" ]; then
+	echo "PASS directory as script"
+else
+	echo "FAIL directory as script"
+	fail=1
+fi
+check 70 "No module named" 'import nosuchmod\n'
 exit $fail
