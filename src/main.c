@@ -12,21 +12,27 @@
 
 static void add_module_paths(const char *script)
 {
-	char dir[1024];
 	const char *slash = strrchr(script, '/');
-	if (slash && (size_t)(slash - script) < sizeof dir - 16) {
-		memcpy(dir, script, (size_t)(slash - script));
-		strcpy(dir + (slash - script), "/modules");
-		module_add_path(dir);
+	if (slash) {
+		size_t n = (size_t)(slash - script);
+		char *dir = malloc(n + 9);
+		if (dir) {
+			memcpy(dir, script, n);
+			strcpy(dir + n, "/modules");
+			module_add_path(dir);
+			free(dir);
+		}
 	}
 	const char *env = getenv("MPLANGP_MODULES");
 	while (env && *env) {
 		const char *colon = strchr(env, ':');
 		size_t n = colon ? (size_t)(colon - env) : strlen(env);
-		if (n > 0 && n < sizeof dir) {
+		char *dir = n > 0 ? malloc(n + 1) : NULL;
+		if (dir) {
 			memcpy(dir, env, n);
 			dir[n] = '\0';
 			module_add_path(dir);
+			free(dir);
 		}
 		env = colon ? colon + 1 : NULL;
 	}
@@ -78,6 +84,11 @@ int main(int argc, char **argv)
 		return 1;
 
 	Lexer *lx = lexer_new(source);
+	if (!lx) {
+		fprintf(stderr, "mplangp: out of memory\n");
+		free(source);
+		return 1;
+	}
 	Program *prog = parse(lx);
 	lexer_free(lx);
 	if (!prog) {

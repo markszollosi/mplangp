@@ -49,7 +49,7 @@ small
 |---|---|---|
 | `None` | `None` | the only "no value"; also what functions return by default |
 | `bool` | `True`, `False` | behaves as integer 1/0 in arithmetic and comparisons |
-| `int` | `0`, `42`, `-7` | signed 64-bit, **wraps on overflow** |
+| `int` | `0`, `42`, `-7` | signed 64-bit, overflow is a runtime error |
 | `float` | `3.14`, `0.5` | needs digits on both sides of the dot; **no exponent literals** (`1e3` is a syntax error; use `float("1e3")`) |
 | `str` | `"text"`, `'text'` | see [Strings](#strings) |
 | `list` | `[1, "a", [2]]` | ordered, mutable, shared by reference |
@@ -126,8 +126,9 @@ Note `not` binds looser than comparisons (`not a == b` is `not (a == b)`) and un
 
 - `int op int` stays `int` for `+ - * %`; `/` **always returns a float** (`10 / 5` is `2.0`). There is no `//` and no `**`: use `int(a / b)` or `math.floor`, and `math.pow`.
 - `%` follows the sign of the divisor like Python (`-7 % 3` is `2`). Division or modulo by zero is the runtime error `Division by zero.`
+- `int` overflow in `+ - *` or unary `-` (for example `9223372036854775807 + 1`) is the runtime error `Integer overflow.`;. `%` by `-1` is `0`.
 - Mixing `int` and `float` gives a `float`. `bool` counts as `0`/`1`.
-- `str + str` concatenates; `str * int` repeats (a negative count gives `""`). `list + list` makes a new concatenated list. Anything else, such as `"a" + 1`, is `Unsupported operand types.`: convert with `text(x)`.
+- `str + str` concatenates; `str * int` repeats (a negative count gives `""`); a result over 268,435,456 bytes is the runtime error `String too long.` `list + list` makes a new concatenated list. Anything else, such as `"a" + 1`, is `Unsupported operand types.`: convert with `text(x)`.
 
 ```my
 print(7 / 2)
@@ -137,7 +138,6 @@ print(2 * 3.0)
 print("ab" * 3 + "!")
 print([1] + [2, 3])
 print("n=" + text(5))
-print(9223372036854775807 + 1)
 ```
 
 ```output
@@ -148,7 +148,14 @@ print(9223372036854775807 + 1)
 ababab!
 [1, 2, 3]
 n=5
--9223372036854775808
+```
+
+```my-error
+print(9223372036854775807 + 1)
+```
+
+```output
+Integer overflow.
 ```
 
 ### Membership: `in`
@@ -480,7 +487,7 @@ print(xs[5])
 Index out of range.
 ```
 
-Runtime messages you will meet: `Undefined variable 'x'.`, `Unsupported operand types.`, `Division by zero.`, `Index out of range.`, `Key 'k' not found.`, `Expected N arguments but got M.`, `Can only call functions.`, `Only modules have attributes.`, `Module 'm' has no attribute 'f'.`, `No module named 'm'.`, `Stack overflow.`, and messages from module functions such as `cannot read '/x': No such file or directory`.
+Runtime messages you will meet: `Undefined variable 'x'.`, `Unsupported operand types.`, `Division by zero.`, `Integer overflow.`, `Index out of range.`, `Key 'k' not found.`, `Expected N arguments but got M.`, `Can only call functions.`, `Only modules have attributes.`, `Module 'm' has no attribute 'f'.`, `No module named 'm'.`, `Stack overflow.`, and messages from module functions such as `cannot read '/x': No such file or directory`.
 
 ### Syntax errors you will meet
 

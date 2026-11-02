@@ -165,7 +165,7 @@ static bool b_range(int argc, Value *argv, Value *ret)
 	} else {
 		return mp_error(ret, "range(n) or range(a, b) takes integers.");
 	}
-	if (hi - lo > RANGE_MAX)
+	if (hi > lo && (uint64_t)hi - (uint64_t)lo > RANGE_MAX)
 		return mp_error(ret, "range is too large.");
 	*ret = mp_list();
 	for (int64_t i = lo; i < hi; i++)
