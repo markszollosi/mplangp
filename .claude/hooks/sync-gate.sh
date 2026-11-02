@@ -12,17 +12,19 @@ printf '%s\n' "$names" | grep -q '^docs/' || miss="$miss
 docs/: no change for src/modules edits"
 added=$( { git diff -U0 "$base" -- 'src/*.c' 'modules/*.c' | grep '^+[^+]'
 	for f in $(printf '%s\n' "$new" | grep -E '^(src|modules)/.*\.c$'); do cat "$f"; done; } 2>/dev/null)
+pats=$(mktemp) && trap 'rm -f "$pats"' EXIT
+sed -n 's/^check [0-9]* "\([^"]*\)".*/\1/p' tests/errors.sh > "$pats"
 msgs=$(printf '%s\n' "$added" | grep -E '(error_at|fail|error|errf|mp_error)\(' |
 	sed -n 's/^[^"]*"\([^"%]\{4,\}\).*/\1/p' | sort -u)
 IFS='
 '
 for m in $msgs; do
-	grep -qF -- "$m" tests/errors.sh || miss="$miss
+	printf '%s\n' "$m" | grep -qF -f "$pats" || miss="$miss
 tests/errors.sh: no case for \"$m\""
 done
 for f in $(git diff --name-only --diff-filter=A "$base" -- 'modules/*.c'; printf '%s\n' "$new" | grep '^modules/.*\.c$'); do
 	n=$(basename "$f" .c)
-	grep -qE "^[[:space:]]*(import|from)[[:space:]]+$n\b" tests/samples/*.my 2>/dev/null ||
+	grep -qE "^[[:space:]]*(import|from)[[:space:]]+$n([[:space:]]|$)" tests/samples/*.my 2>/dev/null ||
 		miss="$miss
 tests/samples/: no sample imports module $n"
 done
