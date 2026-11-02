@@ -15,5 +15,5 @@ src/mplangpfunc.h module ABI: Value layout + mp_* helpers
 src/util.[ch]     alloc helpers
 modules/*.c       native modules (one per import); README.md = authoring rules
 docs/             black-box language docs (README.md is the entry point)
-tests/test_<x>.c  unit test per src component; samples/*.my + .expected; errors.sh
+tests/test_<x>.c  unit test per src component; samples/*.my + .expected; run.sh docs.sh errors.sh structure.sh (checks)
 .claude/contracts per-component invariants, injected when you open src files
