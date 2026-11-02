@@ -13,7 +13,8 @@ for d in "$top"/.claude/worktrees/*/; do
 		[ -n "$(find "$d" -prune -mtime +7 2>/dev/null)" ] && rm -rf "$d"
 		continue
 	fi
-	[ -n "$(find "$d" -prune -mtime +7 2>/dev/null)" ] || continue
+	g=$(git -C "$d" rev-parse --absolute-git-dir 2>/dev/null) || continue
+	[ -z "$(find "$d" "$g/HEAD" "$g/index" -prune ! -mtime +7 2>/dev/null)" ] || continue
 	[ -z "$(git -C "$d" status --porcelain 2>/dev/null)" ] || continue
 	br=$(git -C "$d" symbolic-ref -q --short HEAD) || continue
 	git merge-base --is-ancestor "$br" main 2>/dev/null || continue

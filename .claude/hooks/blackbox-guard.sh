@@ -16,8 +16,8 @@ deny()
 n=$(printf '%s' "$t" | tr -d "'\"\\\\" | sed "s|$root/||g")
 bad='(^|[^A-Za-z0-9_.-])(src|tests|\.git|\.claude)([^A-Za-z0-9_.-]|$)|modules/[A-Za-z0-9_]+\.c|Makefile|CLAUDE\.md'
 printf '%s' "$n" | grep -Eq "$bad" && deny "path"
-printf '%s' "$n" | grep -Fq '..' && deny "parent directory"
-printf '%s' "$n" | grep -Eq '\$\(|`|\$\{|\{[^}]*,[^}]*\}|(^|[^A-Za-z0-9_-])eval([^A-Za-z0-9_-]|$)' && deny "indirection"
+printf '%s' "$n" | grep -Eq '(^|[ /])\.\.(/|[ ]|$)' && deny "parent directory"
+printf '%s' "$n" | grep -Eq '\$\(|`|\$[A-Za-z_]|\$\{|\{[^}]*,[^}]*\}|(^|[^A-Za-z0-9_-])eval([^A-Za-z0-9_-]|$)' && deny "indirection"
 printf '%s' "$n" | grep -Eq '(^|[^A-Za-z0-9_./-])git([^A-Za-z0-9_-]|$)' && deny "git"
 case "$tool" in
 Grep | Glob)
@@ -26,10 +26,10 @@ Grep | Glob)
 	*) case "$tool:$pat" in Glob:docs/*) ;; *) deny "search outside docs/" ;; esac ;;
 	esac ;;
 esac
-rec='(^|[^A-Za-z0-9_.-])(find|rg|tree|locate|mdfind|ag|ack|du)([^A-Za-z0-9_-]|$)|(grep|ls)[ ]+-[A-Za-z]*[rR]|--recursive'
+rec='(^|[^A-Za-z0-9_.-])(find|rg|tree|locate|mdfind|ag|ack|du)([^A-Za-z0-9_-]|$)|grep[ ]+-[A-Za-z]*[rR]|ls[ ]+-[A-Za-z]*R|--recursive'
 set -f
 if printf '%s' "$n" | grep -Eq "$rec"; then
-	printf '%s' "$n" | grep -Fq docs || deny "recursive search"
+	printf '%s' "$n" | grep -Eq '(^| )docs(/| |$)' || deny "recursive search"
 	for w in $n; do
 		case "$w" in . | ./ | / | '~' | '~/' | '*' | './*') deny "recursive search" ;; esac
 	done

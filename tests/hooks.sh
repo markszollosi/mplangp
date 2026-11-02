@@ -155,10 +155,10 @@ o=$(jq -nc '{tool_name:"Glob",tool_input:{pattern:"docs/*.md"}}' | guard)
 
 mkdir -p "$T/pr/.claude/worktrees/stale"
 (
-	cd "$T/pr" && git init -q . && git -c user.email=a@b -c user.name=n commit -q --allow-empty -m i &&
+	cd "$T/pr" && git init -q . && git -c user.email=a@b -c user.name=n -c commit.gpgsign=false commit -q --allow-empty -m i &&
 		git branch -M main &&
 		git worktree add -q .claude/worktrees/wt1 -b wt1 && git worktree add -q .claude/worktrees/wt2 -b wt2 &&
-		: > .claude/worktrees/wt2/new && touch -t 200001010000 .claude/worktrees/wt1 .claude/worktrees/wt2 \
+		: > .claude/worktrees/wt2/new && touch -t 200001010000 .claude/worktrees/wt1 .claude/worktrees/wt1/.git "$(git -C .claude/worktrees/wt1 rev-parse --absolute-git-dir)/HEAD" "$(git -C .claude/worktrees/wt1 rev-parse --absolute-git-dir)/index" .claude/worktrees/wt2 \
 			.claude/worktrees/stale
 ) >/dev/null 2>&1
 touch -t 200001010000 "$T/mplangp-old"
