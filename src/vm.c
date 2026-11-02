@@ -337,7 +337,7 @@ InterpretResult vm_run(Chunk *main_chunk)
 			Value c = chunk->constants.values[idx];
 			if (op == OP_CONST) {
 				if (sp >= STACK_MAX) {
-					return error(chunk, at, "%s", "Stack overflow.");
+					return error(chunk, at, "%s", "Stack overflow: value stack full (65536 slots).");
 				}
 				stack[sp++] = value_copy(c);
 				break;
@@ -352,7 +352,7 @@ InterpretResult vm_run(Chunk *main_chunk)
 					return error(chunk, at, "Undefined variable '%s'.", c.as.s);
 				}
 				if (sp >= STACK_MAX) {
-					return error(chunk, at, "%s", "Stack overflow.");
+					return error(chunk, at, "%s", "Stack overflow: value stack full (65536 slots).");
 				}
 				stack[sp++] = value_copy(v);
 			} else {
@@ -572,7 +572,7 @@ InterpretResult vm_run(Chunk *main_chunk)
 			}
 			if (op == OP_GET_LOCAL) {
 				if (sp >= STACK_MAX) {
-					return error(chunk, at, "%s", "Stack overflow.");
+					return error(chunk, at, "%s", "Stack overflow: value stack full (65536 slots).");
 				}
 				stack[sp] = value_copy(stack[f->base + slot]);
 				sp++;
@@ -667,7 +667,7 @@ InterpretResult vm_run(Chunk *main_chunk)
 					return error(chunk, at, "%s", msg);
 				}
 				if (sp >= STACK_MAX) {
-					return error(chunk, at, "%s", "Stack overflow.");
+					return error(chunk, at, "%s", "Stack overflow: value stack full (65536 slots).");
 				}
 				stack[sp].type = VAL_MODULE;
 				stack[sp++].as.module = m;

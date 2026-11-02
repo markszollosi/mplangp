@@ -378,7 +378,7 @@ Rules:
 - A function exists once its `def` line has *executed*; call it only after that.
 - A function without `return`, or a bare `return`, gives `None`.
 - Functions are values: store them in variables, lists and maps (`ops = {"add": add}; ops["add"](1, 2)`), and call through them.
-- Recursion works but the interpreter allows 10000 active calls **including the main program**, so a function can call itself at most 9999 levels deep (`line N: Stack overflow: calls nested too deeply (limit 9999).` beyond that, which is fatal, so unbounded recursion fails quickly with the line of the call). Prefer loops, and build tables like Fibonacci bottom-up instead of recursing from the top.
+- Recursion works but the interpreter allows 10000 active calls **including the main program**, so a function can call itself at most 9999 levels deep, fewer if frames use many slots (`line N: Stack overflow: calls nested too deeply (limit 9999).` beyond that, which is fatal, so unbounded recursion fails quickly with the line of the call). Prefer loops, and build tables like Fibonacci bottom-up instead of recursing from the top.
 - The value stack holds 65536 slots in total, so calls with enormous argument lists or deeply nested expressions can overflow it.
 
 ### Scope
