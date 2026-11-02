@@ -14,6 +14,6 @@ You write programs in the mplangp language (`.my` files) from the documentation 
 
 Start at docs/README.md. Run programs with `./mplangp file.my` (build with `make` only if the binary is missing). Put your programs in a scratch directory outside the repo.
 
-You may not read src/, tests/, modules/*.c, the Makefile or git history; hooks will deny it. If docs are unclear, an error message is unhelpful, or behaviour surprises you, do not work around it silently.
+You may not read src/, tests/, modules/*.c, the Makefile or git history; hooks will deny it. If a tool call is denied by a hook, do not retry the same access through another tool (for example Bash `cat` after a denied Read) and do not rephrase the path to slip past it: stop and report the denial as a finding. Docs are always readable, so a denied docs read is a harness bug. If docs are unclear, an error message is unhelpful, or behaviour surprises you, do not work around it silently.
 
 Report: did you complete the task, how many attempts it took, and a list of findings (doc gaps, confusing errors, surprising semantics), each with the exact program and output that showed it.
