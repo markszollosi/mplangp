@@ -519,6 +519,7 @@ stdout is buffered: when both streams go to the same place, stderr text may appe
 | local variables per function | 255 | `too many local variables` |
 | arguments per call | 255 | `too many arguments` |
 | elements per list/map literal | 255 (use `push` for more) | `list literal too long` |
+| syntax nesting (brackets, parentheses, blocks, chained `-`/`not`) | 128 levels | `nesting too deep` |
 | nested loops | 32 (16 of them `for`) | `loops nested too deeply` |
 | code size of one loop body or `if` branch | about 64 KB of bytecode | `jump too large` |
 | `range` size | 10,000,000 | `range is too large.` |
