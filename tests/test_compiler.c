@@ -124,5 +124,24 @@ int main(void)
 		}
 		chunk_free(&c);
 	}
+	{
+		Stmt *head = NULL;
+		for (int i = 0; i < 1000; i++) {
+			Stmt *b = ast_new_break_stmt(1);
+			b->next = head;
+			head = b;
+		}
+		Stmt *w = ast_new_while_stmt(ast_new_literal(value_bool(true), 1), head, 1);
+		Program p = { w };
+		Chunk c;
+		chunk_init(&c);
+		if (!compile(&p, &c)) {
+			printf("FAIL 1000 breaks: not compiled\n");
+			failures++;
+		} else {
+			printf("ok   1000 breaks\n");
+		}
+		chunk_free(&c);
+	}
 	return failures ? 1 : 0;
 }

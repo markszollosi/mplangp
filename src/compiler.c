@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "compiler.h"
 #include "opcode.h"
@@ -57,15 +58,15 @@ static bool name_op(Chunk *c, const char *name, int length, int line, OpCode op)
 }
 
 #define LOOPS_MAX 32
-#define BREAKS_MAX 256
 
 static struct {
 	int start[LOOPS_MAX]; /* code offset of each open loop's condition */
 	int mark[LOOPS_MAX];  /* breaks[] length when the loop was entered */
 	int depth;
 	int floor;            /* loops below this belong to an enclosing function */
-	int breaks[BREAKS_MAX]; /* pending break jumps awaiting a target */
+	int *breaks;          /* pending break jumps awaiting a target */
 	int nbreaks;
+	int cap;
 } loops;
 
 static int local_slot(const char *name, int length)
@@ -371,8 +372,14 @@ static bool stmt(Chunk *c, Stmt *s)
 	case STMT_BREAK:
 		if (loops.depth <= loops.floor)
 			return fail(line, "'break' outside loop");
-		if (loops.nbreaks >= BREAKS_MAX)
-			return fail(line, "too many break statements");
+		if (loops.nbreaks >= loops.cap) {
+			int cap = loops.cap ? loops.cap * 2 : 64;
+			int *grown = realloc(loops.breaks, (size_t)cap * sizeof *grown);
+			if (!grown)
+				return fail(line, "out of memory");
+			loops.breaks = grown;
+			loops.cap = cap;
+		}
 		loops.breaks[loops.nbreaks++] = emit_jump(c, OP_JUMP, line);
 		return true;
 	case STMT_CONTINUE:
@@ -447,7 +454,11 @@ bool compile(Program *prog, Chunk *chunk)
 	scope.n = 0;
 	loops.depth = loops.floor = loops.nbreaks = 0;
 	fordepth = 0;
-	if (!stmts(chunk, prog->body))
+	bool ok = stmts(chunk, prog->body);
+	free(loops.breaks);
+	loops.breaks = NULL;
+	loops.cap = 0;
+	if (!ok)
 		return false;
 	chunk_write(chunk, OP_HALT, chunk->count ? chunk->lines[chunk->count - 1] : 0);
 	return true;
