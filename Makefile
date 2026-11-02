@@ -70,4 +70,7 @@ test: mplangp modules
 clean:
 	rm -rf mplangp build $(MODOUT) $(TESTS:%=tests/test_%)
 
-.PHONY: all modules test clean
+leaks: mplangp modules
+	@sh tools/leaks.sh
+
+.PHONY: all modules test leaks clean
