@@ -1,0 +1,19 @@
+src/main.c        entry: read file, lex/parse/compile/run, exit codes
+src/lexer.[ch] token.h   tokens, INDENT/DEDENT
+src/parser.[ch]   tokens -> AST
+src/ast.[ch]      AST nodes, program_free
+src/compiler.[ch] AST -> Chunk, scoping, loops
+src/opcode.h      opcode enum
+src/chunk.[ch]    bytecode + constants, disassembly
+src/function.[ch] refcounted Function
+src/vm.[ch]       dispatch loop, frames, globals
+src/value.[ch]    Value, strings, lists, maps
+src/table.[ch]    string-keyed hash table (globals)
+src/builtin.[ch]  builtins: len push pop keys ... args
+src/module.[ch]   dlopen native modules
+src/mplangpfunc.h module ABI: Value layout + mp_* helpers
+src/util.[ch]     alloc helpers
+modules/*.c       native modules (one per import); README.md = authoring rules
+docs/             black-box language docs (README.md is the entry point)
+tests/test_<x>.c  unit test per src component; samples/*.my + .expected; errors.sh
+.claude/contracts per-component invariants, injected when you open src files
