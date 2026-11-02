@@ -10,13 +10,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Error cases (exit code + message) live in `tests/errors.sh`.
 - `docs/` is the black-box documentation for programmers of the language (agents read it instead of the source). `tests/docs.sh` (part of `make test`) runs every ```` ```my ```` / ```` ```my-error ```` fenced example, compares a following ```` ```output ```` block, and fails when a function exported by `modules/*.c` or `src/builtin.c` is missing from its page. Changing language behaviour or a module means updating `docs/` in the same change.
 - One sample: `./mplangp tests/samples/fizzbuzz.my`.
-- Writing a native module: follow `modules/README.md` (required reading before touching `modules/` or `src/mplangpfunc.h`).
-- Adding a source file to the interpreter: add it to `SRC` in the `Makefile` and, if it has a test, to `TESTS` plus a `T_<name>` source list.
+- Native module rules: `modules/README.md` (required reading before touching `modules/` or `src/mplangpfunc.h`).
+- New module: `tools/new-module.sh name` (skill `add-module`) writes the `.c`, docs page and index rows, sample and error check; fill them in per the README.
+- New interpreter file: `tools/new-src.sh name` (skill `add-src`) writes `src/name.[ch]`, a test stub, the `Makefile` SRC/TESTS/`T_name` entries and the filemap line. Only fix `T_name` if the test links more sources.
 - Leak check on macOS: `leaks --atExit -- ./mplangp file.my`.
 
 ## Layout
 
-`src/` holds all sources and headers (including `main.c`), `modules/` the native module sources (built `.so` files are git-ignored), `tests/` the module tests and `tests/samples/`, `build/` the object files (git-ignored). The `Makefile` lives at the root and `SRC` lists names relative to `src/`.
+`tools/` holds dev scripts (scaffolds, `testcache.sh`); `src/` holds all sources and headers (including `main.c`), `modules/` the native module sources (built `.so` files are git-ignored), `tests/` the module tests and `tests/samples/`, `build/` the object files (git-ignored). The `Makefile` lives at the root and `SRC` lists names relative to `src/`.
 
 ## Conventions
 
@@ -38,6 +39,10 @@ Do not survey the repo or read files "to get oriented". Use the file map, open o
 - Writing programs in the language: read `docs/README.md` only, never `src/`. To validate a change this way, use the `blackbox` agent.
 - Module work: `modules/README.md`; the module/function index is injected on first touch, so do not read other modules to check for existing features.
 - Interpreter work: the one component file, its `tests/test_<x>.c`, and the contract the hook injects.
+
+## Agents and hooks
+
+Agents in `.claude/agents/`: `blackbox` (fresh-eyes language tester), `reviewer`, `docsync` (docs vs behaviour), `module-author`, `triage` (issues), `sampler` (samples/expected). Delegate to them instead of doing that work inline. Hooks in `.claude/hooks/` enforce routine rules (`sync-gate`, `branch-guard`, `testcache`, plus the file-map, contract, issue and PR gates); do not restate or hand-check them. `tests/structure.sh` checks repo structure and `tests/hooks.sh` tests the hooks; both run in `make test`.
 
 ## Issues
 
