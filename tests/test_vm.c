@@ -136,6 +136,7 @@ int main(void)
 	binary("repeat rev", value_int(2), value_string("x", 1), OP_MUL, INTERPRET_OK, "xx\n");
 	binary("repeat neg", value_string("ab", 2), value_int(-1), OP_MUL, INTERPRET_OK, "\n");
 	binary("repeat huge", value_string("ab", 2), value_int(INT64_MAX), OP_MUL, INTERPRET_RUNTIME_ERROR, "");
+	binary("repeat over cap", value_string("ab", 2), value_int(134217729), OP_MUL, INTERPRET_RUNTIME_ERROR, "");
 	binary("div0", value_int(1), value_int(0), OP_DIV, INTERPRET_RUNTIME_ERROR, "");
 	binary("mod0", value_int(1), value_int(0), OP_MOD, INTERPRET_RUNTIME_ERROR, "");
 	binary("fdiv0", value_float(1.0), value_float(0.0), OP_DIV, INTERPRET_RUNTIME_ERROR, "");
