@@ -378,8 +378,8 @@ Rules:
 - A function exists once its `def` line has *executed*; call it only after that.
 - A function without `return`, or a bare `return`, gives `None`.
 - Functions are values: store them in variables, lists and maps (`ops = {"add": add}; ops["add"](1, 2)`), and call through them.
-- Recursion works but the interpreter allows only 64 active calls **including the main program**, so a function can call itself at most 63 levels deep (`Stack overflow.` beyond that, which is fatal). Prefer loops, and build tables like Fibonacci bottom-up instead of recursing from the top.
-- The value stack holds 256 slots in total, so calls with enormous argument lists or deeply nested expressions can overflow it.
+- Recursion works but the interpreter allows 10000 active calls **including the main program**, so a function can call itself at most 9999 levels deep (`line N: Stack overflow: calls nested too deeply (limit 9999).` beyond that, which is fatal, so unbounded recursion fails quickly with the line of the call). Prefer loops, and build tables like Fibonacci bottom-up instead of recursing from the top.
+- The value stack holds 65536 slots in total, so calls with enormous argument lists or deeply nested expressions can overflow it.
 
 ### Scope
 - At the top level every variable is global.
@@ -506,8 +506,8 @@ stdout is buffered: when both streams go to the same place, stderr text may appe
 
 | limit | value | failure |
 |---|---|---|
-| call depth | 64 frames (the main program is one, so 63 nested calls) | `Stack overflow.` |
-| value stack | 256 slots | `Stack overflow.` |
+| call depth | 10000 frames (the main program is one, so 9999 nested calls) | `Stack overflow: calls nested too deeply (limit 9999).` |
+| value stack | 65536 slots | `Stack overflow: value stack full (65536 slots).` |
 | distinct constants + names per function body / main program | 65536 | `too many constants` |
 | local variables per function | 255 | `too many local variables` |
 | arguments per call | 255 | `too many arguments` |
