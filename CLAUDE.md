@@ -38,3 +38,7 @@ Do not survey the repo or read files "to get oriented". Use the file map, open o
 - Writing programs in the language: read `docs/README.md` only, never `src/`. To validate a change this way, use the `blackbox` agent.
 - Module work: `modules/README.md`; the module/function index is injected on first touch, so do not read other modules to check for existing features.
 - Interpreter work: the one component file, its `tests/test_<x>.c`, and the contract the hook injects.
+
+## Issues
+
+Context is scarce, so agents record bugs, doc gaps and follow-ups as GitHub issues instead of carrying them in memory or fixing them out of scope. Open one with `gh issue create --title "..." --body "..."` (title must be a quoted `--title`). The `issue-gate.sh` hook first lists similar open and closed issues and denies the call if it finds any: comment on the existing one (`gh issue comment N`), or if the issue is genuinely new rerun the command prefixed with `ISSUE_CHECKED=1`.
