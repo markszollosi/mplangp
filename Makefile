@@ -65,10 +65,14 @@ test: mplangp modules
 	sh tests/run.sh || fail=1; \
 	sh tests/errors.sh || fail=1; \
 	sh tests/docs.sh || fail=1; \
+	sh tests/structure.sh || fail=1; \
 	sh tests/hooks.sh || fail=1; \
 	exit $$fail
 
 clean:
 	rm -rf mplangp build $(MODOUT) $(TESTS:%=tests/test_%)
 
-.PHONY: all modules test clean
+leaks: mplangp modules
+	@sh tools/leaks.sh
+
+.PHONY: all modules test leaks clean

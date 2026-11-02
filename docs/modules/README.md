@@ -44,7 +44,7 @@ with argument types, return values, error behaviour and tested examples.
 | [csv](csv.md) | `parse dump` |
 | [db](db.md) | `open close exec query last_id` |
 | [re](re.md) | `test find findall sub split` |
-| [str](str.md) | `len upper lower trim split lines join replace find starts ends fixed pad_left pad_right` |
+| [str](str.md) | `len upper lower trim split lines join replace find starts ends fixed pad_left pad_right count ord chr` |
 | [enc](enc.md) | `b64 unb64 hex unhex url unurl` |
 | [hash](hash.md) | `sha256 file hmac crc32` |
 | [rand](rand.md) | `seed int float choice shuffle hex uuid` |
