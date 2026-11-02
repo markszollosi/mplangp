@@ -68,4 +68,8 @@ fi
 check 70 "count(s, sub) needs a non-empty sub." 'import str\nstr.count("a", "")\n'
 check 70 "ord(c) takes a one-byte string." 'import str\nstr.ord("ab")\n'
 check 70 "chr(n) takes an integer from 1 to 255." 'import str\nstr.chr(0)\n'
+check 70 "Integer overflow." 'print(9223372036854775807 + 1)\n'
+check 70 "Integer overflow." 'print(-9223372036854775807 - 2)\n'
+check 70 "Integer overflow." 'print(4294967296 * 4294967296)\n'
+check 70 "Integer overflow." 'x = -9223372036854775807 - 1\nprint(-x)\n'
 exit $fail
